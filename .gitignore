@@ -1,0 +1,51 @@
+# CMake build directories
+build/
+build-*/
+cmake-build-*/
+Testing/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+
+# MSVC generated files
+**/*.suo
+**/*.user
+**/*.ipch
+**/*.vcxproj
+**/*.vcxproj.filters
+**/*.sln
+**/*.slnx
+**/*.lastbuildstate
+**/*.recipe
+**/*.tlog/**
+**/*.obj
+**/*.ilk
+**/*.pdb
+**/*.lib
+**/*.exe
+
+# Test output
+test_*_out.txt
+test_*_err.txt
+build_log.txt
+
+# IDE
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lua (optional dependency)
+luarocks/
+.lua/
+
+# Benchmark output
+bench_*.csv
+bench_*.json

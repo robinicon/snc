@@ -1,0 +1,93 @@
+// snc.proto — Example protobuf schema for the SNC game-microservice framework.
+//
+// NOTE: This file is for reference/documentation only.
+// The runtime wire protocol uses a custom binary header (RpcReqHeader/RpcRespHeader);
+// protobuf is NOT used at runtime unless SNC_ENABLE_PROTOBUF is enabled.
+//
+// To generate C++ headers:
+//   protoc --cpp_out=. --proto_path=. snc.proto
+//
+// See also: include/snc/core/RpcHeader.h for the actual wire format.
+
+syntax = "proto3";
+
+package snc;
+
+// ── Generic RPC request / response (conceptual; runtime uses RpcReqHeader) ──
+
+message RpcRequest {
+    uint64  seq        = 1; // request sequence number
+    uint32  timeout_ms = 2; // timeout in milliseconds
+    uint32  msg_id     = 3; // business message ID
+    bytes   payload    = 4; // serialized business data
+}
+
+message RpcResponse {
+    uint64  seq      = 1; // echoes the request seq
+    int32   err_code = 2; // 0 = success, non-zero = error code
+    bytes   payload  = 3; // response data (empty on error)
+}
+
+// ── Demo: Login service messages ──────────────────────────────────────────────
+
+message LoginRequest {
+    string  account    = 1;
+    string  password   = 2;
+    string  client_ver = 3; // client version string
+}
+
+message LoginResponse {
+    int32   err_code  = 1;
+    string  err_msg   = 2;
+    int64   player_id = 3;
+    string  token     = 4;
+}
+
+// ── Demo: Player / world data ─────────────────────────────────────────────────
+
+message PlayerInfo {
+    int64   player_id = 1;
+    string  name      = 2;
+    int32   level     = 3;
+    float   x         = 4;
+    float   y         = 5;
+    float   z         = 6;
+    int32   hp        = 7;
+    int32   max_hp    = 8;
+    repeated int32 skills = 9;
+}
+
+message PlayerPosNotify {
+    int64   player_id = 1;
+    float   x         = 2;
+    float   y         = 3;
+    float   z         = 4;
+    float   heading   = 5;
+    int64   timestamp = 6;
+}
+
+message NpcInfo {
+    int32   npc_id        = 1;
+    int32   template_id   = 2;
+    float   x             = 3;
+    float   y             = 4;
+    float   z             = 5;
+    int32   hp            = 6;
+    int32   state         = 7; // 0=idle, 1=alive, 2=dead
+}
+
+message WorldUpdate {
+    repeated PlayerPosNotify players = 1;
+    repeated NpcInfo         npcs    = 2;
+    int64                    world_ts = 3;
+}
+
+// ── Demo: Chat ──────────────────────────────────────────────────────────────────
+
+message ChatMsg {
+    int32   channel     = 1; // 0=local, 1=guild, 2=world
+    int64   sender_id   = 2;
+    string  sender_name = 3;
+    string  content     = 4;
+    int64   timestamp   = 5;
+}

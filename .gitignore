@@ -1,51 +1,91 @@
-# CMake build directories
+# Build output
 build/
-build-*/
 cmake-build-*/
-Testing/
-CMakeCache.txt
-cmake_install.cmake
-CTestTestfile.cmake
-install_manifest.txt
-
-# MSVC generated files
+bin/
+lib/
+**/*.vcxproj
+**/*.sln
 **/*.suo
 **/*.user
 **/*.ipch
-**/*.vcxproj
-**/*.vcxproj.filters
-**/*.sln
-**/*.slnx
-**/*.lastbuildstate
-**/*.recipe
-**/*.tlog/**
-**/*.obj
 **/*.ilk
 **/*.pdb
+**/*.obj
+**/*.o
+**/*.so
+**/*.dll
+**/*.a
 **/*.lib
+**/*.dylib
 **/*.exe
-
-# Test output
-test_*_out.txt
-test_*_err.txt
-build_log.txt
 
 # IDE
 .vscode/
 .idea/
-.vs/
 *.swp
 *.swo
 *~
 
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CMakePresets.json.template
+
+# Generated files
+**/*.pb.cc
+**/*.pb.h
+**/*.pb.cc
+**/*.fbs_generated.h
+**/*.lua
+**/lua_templates/
+
+# Test artifacts
+**/test_*.exe
+**/test_*
+**/CTestTestfile.cmake
+**/Testing/
+coverage/
+lcov.info
+cobertura.xml
+
 # OS
 .DS_Store
 Thumbs.db
+__pycache__/
+*.pyc
+*.pyo
 
-# Lua (optional dependency)
-luarocks/
-.lua/
+# Logs and temp files
+*.log
+logs/
+tmp/
+temp/
 
-# Benchmark output
-bench_*.csv
-bench_*.json
+# Doctest single-header (this file is kept; the test runner is not)
+# thirdparty/doctest/ stays as-is
+
+# Cross-platform / IDE
+.clang-format
+.clang-tidy
+.editorconfig
+*.sublime-*
+.project
+.settings/
+.classpath
+*.gemspec
+/Rakefile
+rust-toolchain.toml
+rust-analyzer.toml
+
+# Checksums
+checksums.md5
+checksums.sha1
+checksums.sha256
+checksums.txt
+
+# Package manager locks (kept as source, ignore generated)
+package-lock.json
+yarn.lock
+.pnpm-store/

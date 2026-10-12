@@ -5,8 +5,7 @@ This document tracks known issues and limitations in the SNC framework.
 ## Platform Limitations
 
 ### macOS
-- The epoll backend in `EventLoop.cpp` is Linux-only. macOS uses kqueue, which is **not yet implemented**.
-- Workaround: Run on Linux (WSL2) or Windows. macOS CI is not configured.
+- ~~kqueue backend not implemented~~ → **Fixed**: kqueue backend is now implemented and fully supported.
 
 ## Library Limitations
 

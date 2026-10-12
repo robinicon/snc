@@ -146,8 +146,18 @@ private:
         while (std::getline(iss, token, ':')) parts.push_back(token);
         if (parts.size() >= 4) {
             s.host     = parts[0];
-            s.port     = static_cast<uint16_t>(std::stoi(parts[1]));
-            s.weight   = std::stoi(parts[2]);
+            // Validate port: must be in [0, 65535]
+            try {
+                unsigned long portVal = std::stoul(parts[1]);
+                if (portVal > 65535) return s;  // malformed, return empty
+                s.port = static_cast<uint16_t>(portVal);
+            } catch (...) { s.port = 0; }
+            // Validate weight: must be >= 0
+            try {
+                long long w = std::stoll(parts[2]);
+                if (w < 0) return s;
+                s.weight = static_cast<int32_t>(w);
+            } catch (...) { s.weight = 0; }
             s.healthy  = parts[3] == "1";
         }
         return s;

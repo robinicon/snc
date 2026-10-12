@@ -22,7 +22,7 @@ public:
     virtual ~IConnection() {}
     virtual int Fd() const = 0;
     virtual bool Send(Msg::Ptr msg) = 0;
-    virtual void Close() = 0;
+    virtual bool Close() = 0;
     virtual void SetMessageCallback(MessageCallback cb) = 0;
     virtual void SetCloseCallback(CloseCallback cb) = 0;
     virtual void SetEnqueueFn(EnqueueFn fn) = 0;

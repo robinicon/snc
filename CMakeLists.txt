@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(snc_cpp VERSION 1.0.0 LANGUAGES CXX)
+project(snc VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -62,3 +62,63 @@ add_subdirectory(libs/snc_db)
 
 # ── Tutorials ───────────────────────────────────────────────────
 # Tutorial documentation lives in docs/tutorials/
+
+# ── Install rules ───────────────────────────────────────────────
+include(GNUInstallDirs)
+
+# Collect all available targets for installation
+set(_snc_install_targets snc_base snc_core snc_serial_pb snc_serial_fbs snc_discovery snc_circuit snc_gateway snc_db)
+if(SNC_BUILD_RPC)
+    list(APPEND _snc_install_targets snc_rpc)
+endif()
+if(SNC_RPC_ENABLE_LUA)
+    list(APPEND _snc_install_targets snc_rpc_lua)
+endif()
+if(SNC_ENABLE_MONITOR)
+    list(APPEND _snc_install_targets snc_monitor)
+endif()
+
+install(TARGETS ${_snc_install_targets}
+    EXPORT sncTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install public headers
+install(DIRECTORY include/snc
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# Install CMake config for downstream find_package(snc) usage
+install(EXPORT sncTargets
+    FILE sncTargets.cmake
+    NAMESPACE snc::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/snc
+)
+
+# Generate and install version file
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/sncConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/sncConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/sncConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/snc
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/sncConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/sncConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/snc
+)
+
+# ── Tests ───────────────────────────────────────────────────────
+option(SNC_BUILD_TESTS "Build unit tests (requires doctest)" ON)
+if(SNC_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -9,7 +9,8 @@ EventLoop 是网络 I/O 的核心调度器，底层根据平台自动选择实�
 | 平台 | 后端 | 说明 |
 |------|------|------|
 | Windows | IOCP | 完成端口，高并发首选 |
-| Linux/macOS | epoll | kqueue 暂不支持 |
+| Linux | epoll | epoll_wait() |
+| macOS | kqueue | kevent()（BSD 等效） |
 
 ```cpp
 // 创建 EventLoop

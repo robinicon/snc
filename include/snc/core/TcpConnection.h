@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <functional>
 #include <chrono>
+#include <atomic>
 #include "snc/core/IConnection.h"
 #include "snc/core/DisconnectReason.h"
 #include "snc/core/SocketWrap.h"
@@ -61,11 +62,15 @@ public:
         return true;
     }
 
-    void Close() override {
-        if (state_ == State::Closed) return;
-        state_ = State::Closed;
+    // Close the connection and fire closeCallback_ exactly once.
+    // Returns true if this call performed the close; false if another
+    // concurrent path already closed it.
+    bool Close() override {
+        State expected = State::Connected;
+        if (!state_.compare_exchange_strong(expected, State::Closed)) return false;
         sock_.Close();
         if (closeCallback_) closeCallback_(shared_from_this(), DisconnectReason::NORMAL);
+        return true;
     }
 
     // ── Callbacks ──────────────────────────────────────────────
@@ -144,10 +149,12 @@ public:
             SNC_LOG_WARN("core", "heartbeat missed %d/%d", heartbeatMissed_, heartbeatMaxMissed_);
             if (heartbeatMissed_ >= heartbeatMaxMissed_) {
                 SNC_LOG_ERROR("core", "heartbeat timeout – closing conn fd=%d", Fd());
-                state_ = State::Closed;
-                sock_.Close();
-                if (heartbeatCallback_) heartbeatCallback_(DisconnectReason::TIMEOUT);
-                if (closeCallback_)     closeCallback_(shared_from_this(), DisconnectReason::TIMEOUT);
+                State expected = State::Connected;
+                if (state_.compare_exchange_strong(expected, State::Closed)) {
+                    sock_.Close();
+                    if (heartbeatCallback_) heartbeatCallback_(DisconnectReason::TIMEOUT);
+                    if (closeCallback_)     closeCallback_(shared_from_this(), DisconnectReason::TIMEOUT);
+                }
             }
         }
     }
@@ -157,7 +164,8 @@ public:
         char buf[4096];
         ssize_t n = sock_.Recv(buf, sizeof(buf));
         if (n <= 0) {
-            state_ = State::Closed;
+            State expected = State::Connected;
+            if (!state_.compare_exchange_strong(expected, State::Closed)) return;
             sock_.Close();
             DisconnectReason reason = (n == 0)
                 ? DisconnectReason::NORMAL
@@ -287,7 +295,7 @@ private:
     size_t              sendOffset_ = 0;
 
     enum class State { Connected, Closing, Closed };
-    State               state_;
+    std::atomic<State>    state_{State::Connected};
 
     // C3 – Backpressure thresholds (bytes).
     static constexpr long long kSendBufferHighWatermark = 1024 * 1024;   // 1 MB

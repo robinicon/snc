@@ -11,14 +11,13 @@
 ## 克隆与配置
 
 ```bash
-cd snc_cpp
 cmake -B build -G "Visual Studio 17 2022"    # Windows
 cmake -B build -DCMAKE_BUILD_TYPE=Release    # Linux
 ```
 
 ## 最小编译配置
 
-`snc_cpp/CMakePresets.json` 提供四个预设：
+`CMakePresets.json` 提供四个预设：
 
 | Preset   | 说明                          |
 |----------|-------------------------------|

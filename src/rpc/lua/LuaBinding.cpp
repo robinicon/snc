@@ -172,8 +172,10 @@ bool HotUpdateMgr::Reload() {
     std::lock_guard<std::mutex> lk(mtx_);
     Buffer& buf = buffers_[activeIdx_];
     if (!buf.vm) return false;
-    // Re-execute init chunk from Lua state
-    return buf.vm->LoadScript(""); // placeholder
+    // Reload requires a valid script path; activeIdx_ buffer does not store one.
+    // Applications should call LoadVersion() followed by Commit() for hot-reload.
+    SNC_LOG_WARN("lua", "HotUpdateMgr::Reload called but no active script path is stored");
+    return false;
 }
 
 #else // !SNC_LUA_AVAILABLE

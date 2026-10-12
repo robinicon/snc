@@ -1,5 +1,8 @@
 # SNC — Server Network Component
 
+[![CI](https://github.com/snc-framework/snc-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/snc-framework/snc-cpp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A C++17 microservice networking framework for game servers.
 
 ## Overview
@@ -24,9 +27,9 @@ snc_serial_fbs — FlatBuffers serialization adapter (stub by default)
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Windows (MSVC) | ✅ Fully supported | IOCP event loop |
+| Windows (MSVC) | ✅ Fully supported | IOCP/select event loop |
 | Linux (GCC/Clang) | ✅ Fully supported | epoll event loop |
-| macOS | ⚠️ Limited | No kqueue backend; epoll code will not compile on macOS |
+| macOS | ✅ Fully supported | kqueue event loop |
 
 ### Compiler requirements
 
@@ -57,15 +60,13 @@ Get started with the tutorials in [docs/tutorials/](docs/tutorials/):
 ### Quick start (Windows, MSVC)
 
 ```bash
-cd snc_cpp
 cmake -B build -G "Visual Studio 17 2022"
 cmake --build build --config Release
 ```
 
-### Quick start (Linux)
+### Quick start (Linux / macOS)
 
 ```bash
-cd snc_cpp
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
@@ -202,7 +203,7 @@ auto endpoints = reg->List("login"); // returns vector of Endpoint
 ## Directory layout
 
 ```
-snc_cpp/
+snc/
 ├── CMakeLists.txt          # Root build configuration
 ├── CMakePresets.json       # Predefined build presets
 ├── include/snc/            # Public headers (install target)
@@ -233,7 +234,7 @@ snc_cpp/
 
 ## License
 
-MIT License — see [LICENSE](../LICENSE).
+MIT License — see [LICENSE](LICENSE).
 
 ## Contributing
 

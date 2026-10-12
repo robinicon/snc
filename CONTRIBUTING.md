@@ -9,7 +9,6 @@ Thank you for your interest in contributing to SNC!
    ```bash
    cmake --preset=minimal
    cmake --build --preset=minimal
-   ctest --preset=minimal
    ```
 3. **Commit** following conventional commit style:
    ```
@@ -26,21 +25,6 @@ Thank you for your interest in contributing to SNC!
 - Line length: 120 characters.
 - Use `enum class` over bare `enum`.
 - Prefer `std::shared_ptr` / `std::make_shared` for objects crossing thread boundaries.
-
-## Testing
-
-All public APIs have unit tests in `libs/<lib>/tests/`. Run:
-
-```bash
-ctest --preset=normal --output-on-failure
-```
-
-For ASan builds (Linux only):
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNC_ENABLE_SANITIZER=ON
-ctest --test-dir build -C Debug --output-on-failure
-```
 
 ## Reporting issues
 

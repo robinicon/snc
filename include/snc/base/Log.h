@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <string>
+#include <mutex>
 #include "snc/base/Common.h"
 
 namespace snc {
@@ -44,6 +45,9 @@ public:
     void Write(LogLevel level, const char* tag, const char* fmt, ...) {
         if (level < level_) return;
         if (!file_) return;
+
+        static std::mutex logMutex;
+        std::lock_guard<std::mutex> lock(logMutex);
 
         va_list args;
         va_start(args, fmt);

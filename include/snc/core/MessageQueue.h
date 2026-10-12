@@ -15,9 +15,20 @@ public:
         : cap_(capacity), highWater_(highWater), lowWater_(lowWater) {}
 
     bool Enqueue(Msg::Ptr msg) {
+        {
+            std::lock_guard<std::mutex> lk(mtx_);
+            if (q_.size() >= cap_) return false;
+            q_.push(std::move(msg));
+        }
+        cv_.notify_one();
+        return true;
+    }
+
+    bool TryDequeue(Msg::Ptr& msg) {
         std::lock_guard<std::mutex> lk(mtx_);
-        if (q_.size() >= cap_) return false;
-        q_.push(std::move(msg));
+        if (q_.empty()) return false;
+        msg = std::move(q_.front());
+        q_.pop();
         return true;
     }
 
@@ -32,7 +43,13 @@ public:
         }
         // Blocking mode: wait until a message is enqueued or stopped.
         std::unique_lock<std::mutex> lk(mtx_);
-        cv_.wait(lk, [&]{ return !q_.empty() || stopped_; });
+        if (timeout_ms > 0) {
+            if (!cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms), [&]{ return !q_.empty() || stopped_; })) {
+                return false; // timeout
+            }
+        } else {
+            cv_.wait(lk, [&]{ return !q_.empty() || stopped_; });
+        }
         if (stopped_ && q_.empty()) return false;
         msg = std::move(q_.front());
         q_.pop();

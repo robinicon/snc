@@ -10,7 +10,6 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
 typedef int ssize_t;
 #else  // _WIN32
 #include <sys/types.h>

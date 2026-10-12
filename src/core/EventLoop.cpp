@@ -1,66 +1,53 @@
-// EventLoop implementation — Windows IOCP / Linux epoll
+// EventLoop implementation — Windows select / Linux epoll / macOS kqueue
 //
 // Platform selection:
-//   - Windows: EventLoopIOCP (uses select() for I/O readiness; IOCP handles are
-//     created but the readiness polling path uses select() for simplicity).
+//   - Windows: EventLoopIOCP  (uses select() for I/O readiness polling).
 //   - Linux:   EventLoopEpoll  (epoll_wait()).
-//   - macOS:   Not yet implemented; falls through to epoll on compilation but
-//              epoll_create1/epoll_wait are unavailable. Use a custom port or
-//              kqueue backend when targeting macOS.
+//   - macOS:   EventLoopKqueue (kevent() – BSD equivalent of epoll).
+
+#ifdef _WIN32
+    // Must include winsock2.h BEFORE windows.h to avoid macro conflicts
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <winsock2.h>
+    #include <windows.h>
+#else
+    #include <sys/epoll.h>
+    #include <sys/event.h>
+    #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <errno.h>
+    #include <fcntl.h>
+#endif
 
 #include "snc/core/EventLoop.h"
 #include "snc/core/TcpConnection.h"
 #include "snc/core/MessageQueue.h"
 #include "snc/core/WorkerPool.h"
-#include "snc/rpc/RpcSession.h"
 #include "snc/base/Log.h"
 #include <cstring>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
+#include <algorithm>
 
 namespace snc::core
 {
 
-// ── Shared: per-connection message queue entry ───────────────────
-struct ConnDispatchEntry {
-    IConnection::Ptr conn;
-    WorkerPool*      pool = nullptr;
-    // The enqueue fn stored on the TcpConnection. When a message arrives
-    // from this connection, DrainConnQueue pulls it and forwards it to
-    // the registered WorkerDispatchFn (set via SetWorkerDispatchFn below).
-    // We capture conn+pool so the lambda can construct EntityHandle.
-};
-
-// ── Drain one connection's queue and forward to WorkerPool ───────
-static size_t DrainConnQueue(ConnDispatchEntry& entry)
-{
-    if (!entry.conn || !entry.pool) return 0;
-    size_t dispatched = 0;
-    // TcpConnection carries its own inbound queue populated by ParseMessages.
-    // We peek the enqueueFn_ is already set; the real routing happens inside
-    // TcpConnection::ParseMessages which calls DispatchToQueue() → enqueueFn_.
-    // This function exists only to flush any residual global queue entries.
-    (void)entry;
-    return 0;
-}
-
 // ═════════════════════════════════════════════════════════════════
-// Windows IOCP implementation
+// Windows IOCP / select implementation
 // ═════════════════════════════════════════════════════════════════
 
 #ifdef SNC_PLATFORM_WINDOWS
 
 EventLoopIOCP::EventLoopIOCP()
 {
-    iocpHandle_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
 }
 
 EventLoopIOCP::~EventLoopIOCP()
 {
-    if (iocpHandle_)
-        CloseHandle(iocpHandle_);
 }
 
 void EventLoopIOCP::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
@@ -77,80 +64,65 @@ void EventLoopIOCP::Run()
 
     while (running_.load(std::memory_order_acquire))
     {
-        // 1) Check accept socket for new connections (non-blocking).
-        if (acceptSock_.Valid()) {
-            char dummy[1];
-            ssize_t n = ::recv(acceptSock_.Fd(), dummy, 1, 0);
-            if (n > 0) {
-                if (acceptCallback_) acceptCallback_();
-            }
+        // Collect open connections
+        std::vector<int> fds;
+        {
+            std::lock_guard<std::mutex> lock(connMutex_);
+            fds.reserve(connections_.size());
+            for (auto& [fd, conn] : connections_)
+                fds.push_back(fd);
         }
 
-        // 2) Poll I/O readiness with select() and drive connections.
-        fd_set readSet, writeSet;
+        if (fds.empty())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+
+        // Use select() for I/O readiness polling
+        fd_set readSet;
         FD_ZERO(&readSet);
-        FD_ZERO(&writeSet);
         int maxFd = 0;
-
+        for (int fd : fds)
         {
-            std::lock_guard<std::mutex> lock(connMutex_);
-            for (auto& [fd, conn] : connections_) {
-                int f = static_cast<int>(fd);
-                if (f > maxFd) maxFd = f;
-                auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-                if (tcp && tcp->IsBackpressuring()) {
-                    FD_SET(f, &writeSet);
-                } else {
-                    FD_SET(f, &readSet);
-                    FD_SET(f, &writeSet);
+            FD_SET(fd, &readSet);
+            if (fd > maxFd) maxFd = fd;
+        }
+
+        timeval tv = {0, 100000}; // 100ms timeout
+        int ret = select(maxFd + 1, &readSet, nullptr, nullptr, &tv);
+
+        if (ret > 0)
+        {
+            for (int fd : fds)
+            {
+                if (FD_ISSET(fd, &readSet))
+                {
+                    IConnection::Ptr conn;
+                    {
+                        std::lock_guard<std::mutex> lock(connMutex_);
+                        auto it = connections_.find(fd);
+                        if (it != connections_.end())
+                            conn = it->second;
+                    }
+                    if (conn)
+                    {
+                        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(conn);
+                        if (tcpConn) tcpConn->ProcessRecvData();
+                    }
                 }
             }
         }
 
-        if (maxFd > 0) {
-            struct timeval tv{0, 50000};  // 50 ms
-            int n = ::select(maxFd + 1, &readSet, &writeSet, nullptr, &tv);
-            if (n > 0) {
-                std::lock_guard<std::mutex> lock(connMutex_);
-                for (auto& [fd, conn] : connections_) {
-                    int f = static_cast<int>(fd);
-                    auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-                    if (!tcp) continue;
-                    if (FD_ISSET(f, &readSet))
-                        tcp->ProcessRecvData();
-                    if (FD_ISSET(f, &writeSet))
-                        tcp->FlushSendBuffer();
-                }
-            }
-        }
-
-        // 3) Drain per-connection dispatch queues → WorkerPool.
+        // Drain message queue
         {
-            std::lock_guard<std::mutex> lock(connMutex_);
-            for (auto& [fd, conn] : connections_) {
-                auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-                if (!tcp) continue;
-                auto it = workerDispatch_.find(fd);
-                if (it == workerDispatch_.end() || !workerPool_) continue;
+            Msg::Ptr msg;
+            while (messageQueue_ && messageQueue_->TryDequeue(msg))
+            {
+                if (messageDispatchFn_)
+                    messageDispatchFn_(std::move(msg));
             }
         }
-
-        // 3b) Drain global MessageQueue (legacy path, kept for compat).
-        if (messageQueue_ && workerPool_) {
-            size_t dispatched = 0;
-            while (true) {
-                Msg::Ptr msg;
-                if (!messageQueue_->Dequeue(msg, 0)) break;
-                (void)msg;
-                ++dispatched;
-            }
-            (void)dispatched;
-        }
-
-        // 4) Timer-based housekeeping.
-        timerMgr_.ProcessTimers();
-        ProcessHeartbeatTickAll();
-        ProcessRpcPruneAll();
     }
 
     SNC_LOG_INFO("core", "IOCP event loop stopped");
@@ -158,57 +130,55 @@ void EventLoopIOCP::Run()
 
 void EventLoopIOCP::Stop()
 {
-    PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
-    if (acceptSock_.Valid()) {
-        char c = 1;
-        ::send(acceptSock_.Fd(), &c, 1, 0);
-    }
+    running_.store(false, std::memory_order_release);
 }
 
 void EventLoopIOCP::AddConnection(IConnection::Ptr conn)
 {
-    AssertOnLoopThread();
-    std::lock_guard<std::mutex> lock(connMutex_);
     int fd = conn->Fd();
+    std::lock_guard<std::mutex> lock(connMutex_);
     connections_[fd] = std::move(conn);
-    HANDLE handle = reinterpret_cast<HANDLE>(static_cast<LONG_PTR>(fd));
-    CreateIoCompletionPort(handle, iocpHandle_, static_cast<ULONG_PTR>(fd), 0);
 }
 
 void EventLoopIOCP::RemoveConnection(IConnection::Ptr conn)
 {
-    AssertOnLoopThread();
+    int fd = conn->Fd();
     std::lock_guard<std::mutex> lock(connMutex_);
-    connections_.erase(conn->Fd());
-    workerDispatch_.erase(conn->Fd());
+    connections_.erase(fd);
 }
 
 void EventLoopIOCP::Wakeup()
 {
-    PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
-    if (acceptSock_.Valid()) {
-        char c = 1;
-        ::send(acceptSock_.Fd(), &c, 1, 0);
-    }
+    // No-op for IOCP select-based loop
 }
-
-// ── Heartbeat / Prune helpers (shared) ───────────────────────────
 
 void EventLoopIOCP::ProcessHeartbeatTickAll()
 {
-    std::lock_guard<std::mutex> lock(connMutex_);
-    for (auto& [fd, conn] : connections_) {
-        auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-        if (tcp) tcp->ProcessHeartbeatTick();
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->ProcessHeartbeatTick();
     }
 }
 
 void EventLoopIOCP::ProcessRpcPruneAll()
 {
-    std::lock_guard<std::mutex> lock(connMutex_);
-    for (auto& [fd, conn] : connections_) {
-        auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-        if (tcp) tcp->InvokePruneExpired();
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->InvokePruneExpired();
     }
 }
 
@@ -218,22 +188,33 @@ void EventLoopIOCP::ProcessRpcPruneAll()
 // Linux epoll implementation
 // ═════════════════════════════════════════════════════════════════
 
-#if !defined(SNC_PLATFORM_WINDOWS)
+#ifdef SNC_PLATFORM_LINUX
 
 EventLoopEpoll::EventLoopEpoll()
-    : epollFd_(-1)
-    , wakeupFd_(-1)
-    , events_(1024)
+    : epollFd_(epoll_create1(0))
 {
-#if defined(__linux__)
-    epollFd_ = epoll_create1(EPOLL_CLOEXEC);
-#endif
+    if (epollFd_ < 0)
+        throw std::runtime_error("Failed to create epoll fd");
+
+    // Create self-pipe for cross-thread wakeup
+    if (pipe(wakeupPipe_) < 0)
+        throw std::runtime_error("Failed to create wakeup pipe");
+
+    // Make wakeup read end non-blocking
+    fcntl(wakeupPipe_[0], F_SETFL, O_NONBLOCK);
+
+    // Register read event on wakeup fd
+    struct epoll_event ev = {};
+    ev.events = EPOLLIN;
+    ev.data.fd = wakeupPipe_[0];
+    epoll_ctl(epollFd_, EPOLL_CTL_ADD, wakeupPipe_[0], &ev);
 }
 
 EventLoopEpoll::~EventLoopEpoll()
 {
-    if (epollFd_ >= 0) ::close(epollFd_);
-    if (wakeupFd_ >= 0) ::close(wakeupFd_);
+    if (epollFd_ >= 0) close(epollFd_);
+    if (wakeupPipe_[0] >= 0) close(wakeupPipe_[0]);
+    if (wakeupPipe_[1] >= 0) close(wakeupPipe_[1]);
 }
 
 void EventLoopEpoll::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
@@ -246,133 +227,295 @@ void EventLoopEpoll::Run()
 {
     thread_id_ = std::this_thread::get_id();
     running_.store(true, std::memory_order_release);
-    SNC_LOG_INFO("core", "Epoll event loop started");
+    SNC_LOG_INFO("core", "epoll event loop started");
+
+    constexpr int MAX_EVENTS = 64;
+    struct epoll_event events[MAX_EVENTS];
 
     while (running_.load(std::memory_order_acquire))
     {
-        int timeout = static_cast<int>(timerMgr_.NextTimeoutMs());
-        if (timeout < 0) timeout = 100;
-
-#if defined(__linux__)
-        int n = epoll_wait(epollFd_, events_.data(), static_cast<int>(events_.size()), timeout);
-        if (n < 0) {
+        int n = epoll_wait(epollFd_, events, MAX_EVENTS, 100); // 100ms timeout
+        if (n < 0)
+        {
             if (errno == EINTR) continue;
-            SNC_LOG_ERROR("core", "epoll_wait failed: %d", errno);
+            SNC_LOG_ERROR("core", "epoll_wait failed: " + std::string(strerror(errno)));
             break;
         }
 
-        for (int i = 0; i < n; ++i) {
-            int fd   = events_[i].data.fd;
-            uint32_t evts = events_[i].events;
-
-            std::lock_guard<std::mutex> lock(connMutex_);
-            auto it = connections_.find(fd);
-            if (it == connections_.end()) continue;
-
-            auto conn = std::dynamic_pointer_cast<TcpConnection>(it->second);
-            if (!conn) continue;
-
-            if (evts & (EPOLLERR | EPOLLHUP)) {
-                conn->Close();
+        for (int i = 0; i < n; ++i)
+        {
+            // Handle wakeup event
+            if (events[i].data.fd == wakeupPipe_[0])
+            {
+                char buf[64];
+                recv(wakeupPipe_[0], buf, sizeof(buf), MSG_DONTWAIT);
                 continue;
             }
-            if (evts & EPOLLIN)
-                conn->ProcessRecvData();
-            if (evts & EPOLLOUT)
-                conn->FlushSendBuffer();
-        }
-#endif
 
-        // Drain global MessageQueue → WorkerPool (same caveat as IOCP path).
-        if (messageQueue_ && workerPool_) {
-            size_t dispatched = 0;
-            while (true) {
-                Msg::Ptr msg;
-                if (!messageQueue_->Dequeue(msg, 0)) break;
-                (void)msg;
-                ++dispatched;
+            int fd = events[i].data.fd;
+            IConnection::Ptr conn;
+            {
+                std::lock_guard<std::mutex> lock(connMutex_);
+                auto it = connections_.find(fd);
+                if (it != connections_.end())
+                    conn = it->second;
             }
-            (void)dispatched;
+            if (conn)
+            {
+                if (events[i].events & EPOLLIN)
+                {
+                    auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(conn);
+                    if (tcpConn) tcpConn->ProcessRecvData();
+                }
+            }
         }
 
-        timerMgr_.ProcessTimers();
-        ProcessHeartbeatTickAll();
-        ProcessRpcPruneAll();
+        // Drain message queue
+        {
+            Msg::Ptr msg;
+            while (messageQueue_ && messageQueue_->TryDequeue(msg))
+            {
+                if (messageDispatchFn_)
+                    messageDispatchFn_(std::move(msg));
+            }
+        }
     }
 
-    SNC_LOG_INFO("core", "Epoll event loop stopped");
+    SNC_LOG_INFO("core", "epoll event loop stopped");
 }
 
 void EventLoopEpoll::Stop()
 {
-    Wakeup();
+    running_.store(false, std::memory_order_release);
 }
 
 void EventLoopEpoll::AddConnection(IConnection::Ptr conn)
 {
-    AssertOnLoopThread();
-    std::lock_guard<std::mutex> lock(connMutex_);
     int fd = conn->Fd();
+    std::lock_guard<std::mutex> lock(connMutex_);
+    if (connections_.find(fd) != connections_.end())
+        return;
     connections_[fd] = std::move(conn);
-#if defined(__linux__)
-    struct epoll_event ev{};
-    ev.events = EPOLLIN | EPOLLET;
+
+    struct epoll_event ev = {};
+    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
     ev.data.fd = fd;
     epoll_ctl(epollFd_, EPOLL_CTL_ADD, fd, &ev);
-#endif
 }
 
 void EventLoopEpoll::RemoveConnection(IConnection::Ptr conn)
 {
-    AssertOnLoopThread();
-    std::lock_guard<std::mutex> lock(connMutex_);
     int fd = conn->Fd();
-#if defined(__linux__)
     epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
-#endif
+    std::lock_guard<std::mutex> lock(connMutex_);
     connections_.erase(fd);
-    workerDispatch_.erase(fd);
 }
 
 void EventLoopEpoll::Wakeup()
 {
-    if (acceptSock_.Valid()) {
-        char c = 1;
-        ::send(acceptSock_.Fd(), &c, 1, 0);
-    }
+    char c = 'w';
+    send(wakeupPipe_[1], &c, 1, MSG_DONTWAIT);
 }
-
-// ── Heartbeat / Prune helpers (shared) ───────────────────────────
 
 void EventLoopEpoll::ProcessHeartbeatTickAll()
 {
-    std::lock_guard<std::mutex> lock(connMutex_);
-    for (auto& [fd, conn] : connections_) {
-        auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-        if (tcp) tcp->ProcessHeartbeatTick();
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->ProcessHeartbeatTick();
     }
 }
 
 void EventLoopEpoll::ProcessRpcPruneAll()
 {
-    std::lock_guard<std::mutex> lock(connMutex_);
-    for (auto& [fd, conn] : connections_) {
-        auto tcp = std::dynamic_pointer_cast<TcpConnection>(conn);
-        if (tcp) tcp->InvokePruneExpired();
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->InvokePruneExpired();
     }
 }
 
-#endif // !SNC_PLATFORM_WINDOWS
+#endif // SNC_PLATFORM_LINUX
 
-// ── Factory ─────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════
+// macOS kqueue implementation
+// ═════════════════════════════════════════════════════════════════
 
-std::unique_ptr<IEventLoop> CreateEventLoop()
+#ifdef SNC_PLATFORM_MACOS
+
+EventLoopKqueue::EventLoopKqueue()
+    : kqueueFd_(kqueue())
 {
-#if defined(SNC_PLATFORM_WINDOWS)
-    return std::make_unique<EventLoopIOCP>();
-#else
-    return std::make_unique<EventLoopEpoll>();
-#endif
+    if (kqueueFd_ < 0)
+        throw std::runtime_error("Failed to create kqueue fd");
+
+    // Create self-pipe for cross-thread wakeup
+    if (pipe(wakeupPipe_) < 0)
+        throw std::runtime_error("Failed to create wakeup pipe");
+
+    // Make wakeup read end non-blocking
+    fcntl(wakeupPipe_[0], F_SETFL, O_NONBLOCK);
+
+    // Register read event on wakeup fd
+    struct kevent ev = {};
+    EV_SET(&ev, wakeupPipe_[0], EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+    kevent(kqueueFd_, &ev, 1, nullptr, 0, nullptr);
 }
+
+EventLoopKqueue::~EventLoopKqueue()
+{
+    if (kqueueFd_ >= 0) close(kqueueFd_);
+    if (wakeupPipe_[0] >= 0) close(wakeupPipe_[0]);
+    if (wakeupPipe_[1] >= 0) close(wakeupPipe_[1]);
+}
+
+void EventLoopKqueue::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
+{
+    std::lock_guard<std::mutex> lock(connMutex_);
+    workerDispatch_[fd] = std::move(fn);
+}
+
+void EventLoopKqueue::Run()
+{
+    thread_id_ = std::this_thread::get_id();
+    running_.store(true, std::memory_order_release);
+    SNC_LOG_INFO("core", "kqueue event loop started");
+
+    constexpr int MAX_EVENTS = 64;
+    struct kevent events[MAX_EVENTS];
+
+    while (running_.load(std::memory_order_acquire))
+    {
+        int n = kevent(kqueueFd_, nullptr, 0, events, MAX_EVENTS, nullptr); // blocking
+        if (n < 0)
+        {
+            if (errno == EINTR) continue;
+            SNC_LOG_ERROR("core", "kevent failed: " + std::string(strerror(errno)));
+            break;
+        }
+
+        for (int i = 0; i < n; ++i)
+        {
+            // Handle wakeup event
+            if (events[i].ident == wakeupPipe_[0])
+            {
+                char buf[64];
+                recv(wakeupPipe_[0], buf, sizeof(buf), MSG_DONTWAIT);
+                continue;
+            }
+
+            int fd = static_cast<int>(events[i].ident);
+            IConnection::Ptr conn;
+            {
+                std::lock_guard<std::mutex> lock(connMutex_);
+                auto it = connections_.find(fd);
+                if (it != connections_.end())
+                    conn = it->second;
+            }
+            if (conn)
+            {
+                if (events[i].filter == EVFILT_READ)
+                {
+                    auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(conn);
+                    if (tcpConn) tcpConn->ProcessRecvData();
+                }
+            }
+        }
+
+        // Drain message queue
+        {
+            Msg::Ptr msg;
+            while (messageQueue_ && messageQueue_->TryDequeue(msg))
+            {
+                if (messageDispatchFn_)
+                    messageDispatchFn_(std::move(msg));
+            }
+        }
+    }
+
+    SNC_LOG_INFO("core", "kqueue event loop stopped");
+}
+
+void EventLoopKqueue::Stop()
+{
+    running_.store(false, std::memory_order_release);
+}
+
+void EventLoopKqueue::AddConnection(IConnection::Ptr conn)
+{
+    int fd = conn->Fd();
+    std::lock_guard<std::mutex> lock(connMutex_);
+    if (connections_.find(fd) != connections_.end())
+        return;
+    connections_[fd] = std::move(conn);
+
+    // Register read event
+    struct kevent ev = {};
+    EV_SET(&ev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+    kevent(kqueueFd_, &ev, 1, nullptr, 0, nullptr);
+}
+
+void EventLoopKqueue::RemoveConnection(IConnection::Ptr conn)
+{
+    int fd = conn->Fd();
+    // Unregister event
+    struct kevent ev = {};
+    EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+    kevent(kqueueFd_, &ev, 1, nullptr, 0, nullptr);
+
+    std::lock_guard<std::mutex> lock(connMutex_);
+    connections_.erase(fd);
+}
+
+void EventLoopKqueue::Wakeup()
+{
+    // Write to self-pipe to wake up the event loop
+    const char* msg = "w";
+    send(wakeupPipe_[1], msg, 1, 0);
+}
+
+void EventLoopKqueue::ProcessHeartbeatTickAll()
+{
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->ProcessHeartbeatTick();
+    }
+}
+
+void EventLoopKqueue::ProcessRpcPruneAll()
+{
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+    {
+        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
+        if (tcpConn) tcpConn->InvokePruneExpired();
+    }
+}
+
+#endif // SNC_PLATFORM_MACOS
 
 } // namespace snc::core

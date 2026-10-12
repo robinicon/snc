@@ -1,0 +1,108 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF"
+      }
+    },
+    {
+      "name": "msvc-base",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "minimal",
+      "displayName": "Minimal (core + rpc only)",
+      "inherits": "base",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "OFF",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "OFF"
+      }
+    },
+    {
+      "name": "normal",
+      "displayName": "Normal (core + rpc + lua + monitor)",
+      "inherits": "base",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "full",
+      "displayName": "Full (all features)",
+      "inherits": "base",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "ON",
+        "SNC_ENABLE_FLATBUFFERS": "ON",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "Release with Debug Info (default build)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "msvc-minimal",
+      "displayName": "MSVC Minimal",
+      "inherits": "msvc-base",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "OFF",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "OFF"
+      }
+    },
+    {
+      "name": "msvc-full",
+      "displayName": "MSVC Full",
+      "inherits": "msvc-base",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "ON",
+        "SNC_ENABLE_FLATBUFFERS": "ON",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "minimal",              "configurePreset": "minimal" },
+    { "name": "normal",               "configurePreset": "normal" },
+    { "name": "full",                 "configurePreset": "full" },
+    { "name": "relwithdebinfo",       "configurePreset": "relwithdebinfo" },
+    { "name": "msvc-minimal",         "configurePreset": "msvc-minimal" },
+    { "name": "msvc-full",            "configurePreset": "msvc-full" }
+  ]
+}

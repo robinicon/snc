@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+	<Configurations>
+		<BuildType Name="Debug"/>
+		<BuildType Name="Release"/>
+		<BuildType Name="MinSizeRel"/>
+		<BuildType Name="RelWithDebInfo"/>
+		<Platform Name="x64"/>
+	</Configurations>
+	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="90748664-9f4d-32f2-b09f-032cc25edf4f" DefaultStartup="true">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="examples/example_01_account.vcxproj"/>
+		<BuildDependency Project="examples/example_02_master.vcxproj"/>
+		<BuildDependency Project="examples/example_03_game.vcxproj"/>
+		<BuildDependency Project="examples/example_05_world.vcxproj"/>
+		<BuildDependency Project="examples/example_06_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_monitor/snc_monitor.vcxproj"/>
+		<BuildDependency Project="libs/snc_redis/snc_redis.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc_lua/snc_rpc_lua.vcxproj"/>
+		<BuildDependency Project="libs/snc_serial_fbs/snc_serial_fbs.vcxproj"/>
+		<BuildDependency Project="libs/snc_serial_pb/snc_serial_pb.vcxproj"/>
+		<BuildDependency Project="libs/snc_websocket/snc_websocket.vcxproj"/>
+		<BuildDependency Project="tests/test_account_service.vcxproj"/>
+		<BuildDependency Project="tests/test_game_service.vcxproj"/>
+		<BuildDependency Project="tests/test_gate_service.vcxproj"/>
+		<BuildDependency Project="tests/test_master_service.vcxproj"/>
+		<BuildDependency Project="tests/test_world_service.vcxproj"/>
+	</Project>
+	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="32305691-7b6d-3ce8-a19e-eac848c3156c">
+		<BuildDependency Project="ALL_BUILD.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<Build Solution="Debug|*" Project="false"/>
+		<Build Solution="Release|*" Project="false"/>
+		<Build Solution="MinSizeRel|*" Project="false"/>
+		<Build Solution="RelWithDebInfo|*" Project="false"/>
+	</Project>
+	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="74b66500-e91e-365b-973b-d548f24be49e"/>
+	<Project Path="examples/example_01_account.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="a8d2e6f3-74a1-33cc-88aa-89740f88320d">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+	</Project>
+	<Project Path="examples/example_02_master.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="dd9486a5-7abd-30bb-ae45-48cb7e97206c">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="examples/example_03_game.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7ed3805c-d768-34f0-a3bd-8be51b86cde6">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="examples/example_05_world.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="83031fbf-1965-31e3-bf19-28d2e3df9401">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="examples/example_06_mmorpg.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="ab89f9db-c348-372a-bf7c-d03e7ebb47bc">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_admin/snc_admin.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="46018cab-88d5-372e-8c07-e1e95d8f2335">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_auth/snc_auth.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="9f1241a9-905b-3bd6-a3d6-defdecfbe3a3">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_core/snc_core.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c3007028-a4c2-3d59-a2e9-f4505e0857c7">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_discovery/snc_discovery.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="3139a743-c1c6-3979-b6bd-da60400b4e42">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_http/snc_http.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4d603d3d-fce7-3426-b5bb-ff0aa66f543f">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_mmorpg/snc_mmorpg.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="6d1a36f1-2b42-373a-9041-310cdec4abcb">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_monitor/snc_monitor.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7d319cff-6fda-30fe-96df-211eba03f9ad">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_redis/snc_redis.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="369e748d-3925-3692-9bb0-5fc34bbec4a4">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_rpc/snc_rpc.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c994a850-9562-3f28-b721-6857e2b47fe5">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_rpc_lua/snc_rpc_lua.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="ac9ecb51-0b0e-37d6-a229-42bfe796cfb4">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_serial_fbs/snc_serial_fbs.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="87744745-856f-3edb-8805-a05a2babd9de">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_serial_pb/snc_serial_pb.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="42b885d4-e89c-3e81-89ed-47d480f62944">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="libs/snc_websocket/snc_websocket.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7e9c7ca8-9166-3502-be94-e1724c95598b">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="tests/test_account_service.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="1a3bbf99-437b-3aea-a713-21ed79221774">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="tests/test_game_service.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="dfb777c5-af8f-37e3-8977-0ebc51a9043b">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="tests/test_gate_service.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="eef3d276-ff78-3e60-b3b9-4eb6d6368705">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="tests/test_master_service.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7794b34e-3461-388f-8627-f94ffa787809">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+	<Project Path="tests/test_world_service.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="104243f8-bf0a-36c0-ab01-2295323a37d3">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="libs/snc_admin/snc_admin.vcxproj"/>
+		<BuildDependency Project="libs/snc_auth/snc_auth.vcxproj"/>
+		<BuildDependency Project="libs/snc_core/snc_core.vcxproj"/>
+		<BuildDependency Project="libs/snc_discovery/snc_discovery.vcxproj"/>
+		<BuildDependency Project="libs/snc_http/snc_http.vcxproj"/>
+		<BuildDependency Project="libs/snc_mmorpg/snc_mmorpg.vcxproj"/>
+		<BuildDependency Project="libs/snc_rpc/snc_rpc.vcxproj"/>
+	</Project>
+</Solution>

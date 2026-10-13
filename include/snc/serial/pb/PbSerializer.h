@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #ifdef SNC_ENABLE_PROTOBUF
 #include <google/protobuf/message.h>
 #else
@@ -23,9 +25,9 @@ public:
                             void* dst, size_t dstLen) override;
 
     // Encode a Protobuf message into length-prefixed bytes.
-    // Returns nullptr on failure. Caller must delete[].
-    static uint8_t* Encode(const char* proto_data, size_t proto_len,
-                           size_t& out_len);
+    // Returns empty vector on failure. Caller owns the result.
+    static std::vector<uint8_t> Encode(const char* proto_data, size_t proto_len,
+                                       size_t& out_len);
 
     // Decode length-prefixed bytes back into a string.
     static bool Decode(const uint8_t* data, size_t len, std::string& out);

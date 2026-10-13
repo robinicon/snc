@@ -34,7 +34,8 @@ eventLoop->Run();
 auto conn = std::make_shared<TcpConnection>(std::move(sock));
 
 // 发送数据（自动缓冲，批量累积后 Flush）
-conn->Send(Msg::Create(0x1001, payload, len));
+std::string payload = "hello";
+conn->Send(Msg::Create(0x1001, payload.c_str(), payload.size()));
 
 // 设置消息回调
 conn->SetMessageCallback([](EntityHandle<IConnection> eh, Msg::Ptr msg) {
@@ -55,7 +56,7 @@ eventLoop->AddConnection(conn);
 `EntityHandle<T>` 是带类型检查的弱引用，用于跨线程传递连接：
 
 ```cpp
-#include "snc/rpc/Entity.h"
+#include "snc/core/EntityHandle.h"
 
 // 从 shared_ptr 创建 handle
 auto handle = EntityHandle<IConnection>::from(conn);

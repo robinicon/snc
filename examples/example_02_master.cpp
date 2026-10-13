@@ -101,8 +101,9 @@ int main(int argc, char* argv[]) {
     SNC_LOG_INFO("master", "MasterService RPC handlers registered (port %d)", rpc_port);
 
     // ── HTTP Admin 服务器 ─────────────────────────────────────────
+    // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥
     JwtConfig jwt_cfg;
-    jwt_cfg.secret = "snc-mmorpg-dev-secret-key-32bytes!!";
+    jwt_cfg.secret = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥，仅用于演示
     JwtService jwt_svc(jwt_cfg);
 
     HttpServer admin_server;

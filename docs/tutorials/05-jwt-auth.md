@@ -84,7 +84,8 @@ AuthPreHandler MakeJwtMiddleware(JwtService& svc);
 
 int main() {
     // 1. 创建 JwtService（密钥必须 ≥ 32 字节）
-    snc::auth::JwtService jwt("this-is-a-32-byte-secret-key!!!!", 3600, "", "HS256");
+    snc::auth::JwtConfig jwt_cfg{"this-is-a-32-byte-secret-key!!!!", 3600, "", "HS256"};
+    snc::auth::JwtService jwt(jwt_cfg);
 
     // 2. 创建 HTTP 服务器
     snc::http::HttpServer server;
@@ -101,7 +102,7 @@ int main() {
             return snc::http::HttpResponse::Unauthorized();
 
         // 签发 token，claims 放入业务需要的字段
-        auto claims = std::unordered_map<std::string, std::string>{{"user_id", user_id}};
+        std::unordered_map<std::string, std::string> claims{{"user_id", user_id}};
         std::string token = jwt.Sign(claims);
         return snc::http::HttpResponse::Ok("{\"token\":\"" + token + "\"}");
     });
@@ -139,14 +140,16 @@ int main() {
 }
 ```
 
-## 安全提示
+## 注意事项
 
-| 项目 | 要求 |
-|------|------|
-| 密钥长度 | HS256 要求密钥 ≥ 32 字节，弱密钥容易被暴力破解 |
-| Token 传输 | 必须使用 HTTPS，否则 Token 可被中间人截获 |
-| 有效期 | 建议生产环境 ≤ 24 小时；短生命周期 Token + Refresh 机制更安全 |
-| 敏感字段 | JWT payload 是 Base64URL 编码（可还原），不要存放密码等敏感信息 |
+1. **密钥长度必须 ≥ 32 字节**：HS256 使用 HMAC-SHA256，密钥过短（如 `"secret"`）会导致签名强度严重不足，且部分 JWT 库对过短密钥会直接报错；建议生产环境使用随机生成的 32+ 字节密钥（如 `openssl rand -base64 32`）
+2. **Token 传输必须使用 HTTPS**：否则 Token 可被中间人截获并 replay
+3. **有效期建议 ≤ 24 小时**：短生命周期 Token + Refresh 机制更安全；生产环境根据业务需要调整
+4. **JWT payload 是 Base64URL 编码（可还原）**：不要存放密码、密钥等敏感信息，只放业务标识（如 `user_id`）
+5. **`JwtConfig` 字段说明**：
+   - `secret` — HMAC-SHA256 签名密钥
+   - `expireSecs` — Token 有效期（秒），默认 3600
+   - `algorithm` — 签名算法，默认 `"HS256"`，其他值未实现
 
 ## 与 snc_admin 的关系
 

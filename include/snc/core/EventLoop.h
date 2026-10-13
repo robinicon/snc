@@ -19,10 +19,6 @@ namespace core {
 class MessageQueue;
 class WorkerPool;
 
-/// 工作线程分派函数类型：接收一个连接句柄和一条消息。
-/// 由 TcpConnection 在解析完一条完整消息后调用，通常路由至业务逻辑。
-using WorkerDispatchFn = std::function<void(EntityHandle<IConnection>, Msg::Ptr)>;
-
 // ═══════════════════════════════════════════════════════════════
 // Windows IOCP / select 事件循环实现
 // ═══════════════════════════════════════════════════════════════
@@ -53,9 +49,6 @@ public:
     void SetWorkerPool(WorkerPool* pool) override { workerPool_ = pool; }
     void SetAcceptSock(SocketWrap sock) { acceptSock_ = std::move(sock); }
     void SetAcceptCallback(std::function<void()> cb) { acceptCallback_ = std::move(cb); }
-
-    /// 设置指定 fd 的 WorkerPool 分派函数（跨线程安全）。
-    void SetWorkerDispatchFn(int fd, WorkerDispatchFn fn);
 
     /// 设置全局消息队列分发回调（在 WorkerPool 线程内执行）。
     /// 默认为安全空操作（打印警告并丢弃）。启动事件循环前调用以接入业务路由。
@@ -92,8 +85,6 @@ private:
     /// IO→Worker 分派目标（消息队列或 WorkerPool）。
     MessageQueue*          messageQueue_ = nullptr;
     WorkerPool*            workerPool_   = nullptr;
-    /// 按 fd 分派的 WorkerPool 回调（受 connMutex_ 保护）。
-    std::unordered_map<int, WorkerDispatchFn> workerDispatch_;
     /// 全局消息队列分发回调（在 WorkerPool 线程内执行）。
     std::function<void(Msg::Ptr)> messageDispatchFn_;
 };
@@ -124,7 +115,6 @@ public:
     void SetWorkerPool(WorkerPool* pool) override { workerPool_ = pool; }
     void SetAcceptSock(SocketWrap sock) { acceptSock_ = std::move(sock); }
     void SetAcceptCallback(std::function<void()> cb) { acceptCallback_ = std::move(cb); }
-    void SetWorkerDispatchFn(int fd, WorkerDispatchFn fn);
     void SetMessageDispatchFn(std::function<void(Msg::Ptr)> fn) {
         messageDispatchFn_ = std::move(fn);
     }
@@ -155,7 +145,6 @@ private:
 
     MessageQueue* messageQueue_ = nullptr;
     WorkerPool*   workerPool_   = nullptr;
-    std::unordered_map<int, WorkerDispatchFn> workerDispatch_;
     std::function<void(Msg::Ptr)> messageDispatchFn_;
 };
 #endif // !SNC_PLATFORM_WINDOWS
@@ -183,7 +172,6 @@ public:
     }
     void SetMessageQueue(MessageQueue* q) override { messageQueue_ = q; }
     void SetWorkerPool(WorkerPool* pool) override { workerPool_ = pool; }
-    void SetWorkerDispatchFn(int fd, WorkerDispatchFn fn);
     void SetAcceptSock(SocketWrap sock) { acceptSock_ = std::move(sock); }
     void SetAcceptCallback(std::function<void()> cb) { acceptCallback_ = std::move(cb); }
     void SetMessageDispatchFn(std::function<void(Msg::Ptr)> fn) {
@@ -216,7 +204,6 @@ private:
 
     MessageQueue* messageQueue_ = nullptr;
     WorkerPool*   workerPool_   = nullptr;
-    std::unordered_map<int, WorkerDispatchFn> workerDispatch_;
     std::function<void(Msg::Ptr)> messageDispatchFn_;
 };
 #endif // SNC_PLATFORM_MACOS

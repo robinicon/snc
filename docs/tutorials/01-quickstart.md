@@ -35,6 +35,56 @@ cmake --build --preset=minimal --config Debug
 
 以下代码创建一个监听端口、接受客户端连接、回显收到的消息的服务器。
 
+### 方法一：使用 TcpServer（推荐）
+
+`snc::core::TcpServer` 封装了 Acceptor + EventLoop + 连接生命周期，一行代码完成初始化：
+
+```cpp
+#include "snc/core/TcpServer.h"
+#include "snc/base/Log.h"
+#include <iostream>
+
+using namespace snc;
+using namespace snc::core;
+
+int main()
+{
+    base::InitLogger(base::LogLevel::INFO);
+
+    auto eventLoop = CreateEventLoop();
+    if (!eventLoop) {
+        SNC_LOG_ERROR("Failed to create event loop");
+        return 1;
+    }
+
+    TcpServer server(*eventLoop);
+    server.SetCallbacks(
+        [](EntityHandle<IConnection> conn) {
+            SNC_LOG_INFO("Client connected: fd=%d", conn.lock()->Fd());
+        },
+        [](EntityHandle<IConnection> conn, Msg::Ptr msg) {
+            // 回显
+            auto c = conn.lock();
+            if (c) c->Send(msg);
+        },
+        [](IConnection::Ptr conn, DisconnectReason reason) {
+            SNC_LOG_INFO("Client disconnected: fd=%d, reason=%d", conn->Fd(), (int)reason);
+        }
+    );
+
+    if (!server.Listen(9000)) return 1;
+    server.Start();
+
+    SNC_LOG_INFO("Echo server started on port 9000");
+    eventLoop->Run();
+    return 0;
+}
+```
+
+### 方法二：手动组装 Acceptor + EventLoop（深入理解）
+
+如需更细粒度的控制，可使用原始 API：
+
 ```cpp
 #include "snc/core.h"
 #include "snc/base/Log.h"
@@ -47,10 +97,8 @@ using namespace snc::core;
 
 int main()
 {
-    // 启动日志（输出到控制台，不写文件）
     base::InitLogger(base::LogLevel::INFO);
 
-    // 创建事件循环（Windows 使用 IOCP，Linux 使用 epoll）
     auto eventLoop = CreateEventLoop();
     if (!eventLoop) {
         SNC_LOG_ERROR("Failed to create event loop");

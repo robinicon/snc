@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #ifdef SNC_ENABLE_FLATBUFFERS
 #include <flatbuffers/flatbuffers.h>
 #else
@@ -27,9 +29,9 @@ public:
                             void* dst, size_t dstLen) override;
 
     // Encode a FlatBuffers bytes into length-prefixed wire format.
-    // Returns nullptr on failure. Caller must delete[].
-    static uint8_t* Encode(const char* fbs_data, size_t fbs_len,
-                           size_t& out_len);
+    // Returns empty vector on failure. Caller owns the result.
+    static std::vector<uint8_t> Encode(const char* fbs_data, size_t fbs_len,
+                                       size_t& out_len);
 
     // Decode length-prefixed bytes back into raw FlatBuffers data.
     static bool Decode(const uint8_t* data, size_t len, std::string& out);

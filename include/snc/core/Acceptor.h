@@ -44,6 +44,11 @@ public:
         return true;
     }
 
+    /// 重载：接受 std::string host
+    bool Listen(uint16_t port, const std::string& host = "0.0.0.0") {
+        return Listen(host.c_str(), port);
+    }
+
     void SetNewConnectionCallback(NewConnCallback cb) { callback_ = std::move(cb); }
 
     // Accept one connection and invoke callback with new TcpConnection.
@@ -59,6 +64,27 @@ public:
         clientSock.SetNoDelay();
         auto conn = std::make_shared<TcpConnection>(std::move(clientSock));
         callback_(conn);
+    }
+
+    /// 直接 Accept 并返回 TcpConnection（不触发回调），供 TcpServer 内部使用。
+    /// 调用方负责将返回的连接注册到 EventLoop。
+    TcpConnection::Ptr Accept() {
+        if (fd_ < 0) return nullptr;
+        sockaddr_in clientAddr{};
+        socklen_t addrlen = sizeof(clientAddr);
+        int clientFd = ::accept(fd_, reinterpret_cast<sockaddr*>(&clientAddr), &addrlen);
+        if (clientFd < 0) return nullptr;
+        SocketWrap clientSock(clientFd);
+        clientSock.SetNonBlocking();
+        clientSock.SetNoDelay();
+        return std::make_shared<TcpConnection>(std::move(clientSock));
+    }
+
+    /// 关闭监听 socket（用于优雅停机）
+    void Shutdown() {
+        if (fd_ >= 0) {
+            CloseFd();
+        }
     }
 
     int Fd() const { return fd_; }

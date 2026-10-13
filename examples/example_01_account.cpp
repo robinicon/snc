@@ -100,8 +100,9 @@ int main(int argc, char* argv[]) {
     if (argc > 1) port = static_cast<uint16_t>(std::stoi(argv[1]));
 
     // JWT 配置（Gate 服复用同一密钥进行本地验签）
+    // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
     JwtConfig jwt_cfg;
-    jwt_cfg.secret = "snc-mmorpg-dev-secret-key-32bytes!!";  // 32 字节 HS256 密钥
+    jwt_cfg.secret = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥，仅用于演示
     jwt_cfg.expireSecs = 7200;  // 2 小时
     JwtService jwt_svc(jwt_cfg);
 

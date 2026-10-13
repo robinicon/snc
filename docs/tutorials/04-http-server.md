@@ -104,16 +104,19 @@ int main() {
 ```cpp
 #include <snc/auth/AuthService.h>
 
-snc::auth::JwtService jwt({"my-secret-key-at-least-32-bytes", 3600, "", "HS256"});
+// 先用 JwtConfig 构建服务
+snc::auth::JwtService jwt(snc::auth::JwtConfig{"my-secret-key-at-least-32-bytes", 3600, "", "HS256"});
 auto auth_mw = snc::auth::MakeJwtMiddleware(jwt);
 
-// 把中间件挂载到所有 /api/* 路由之前
-server.Use(auth_mw);   // 全局中间件（影响所有路由）
+// 包装为 Middleware 类型（返回 false 中断请求链），挂载到 /api/* 前
+server.Use([&auth_mw](snc::http::HttpRequest& req, snc::http::HttpResponse&) -> bool {
+    return auth_mw(req.body, req.headers);
+});
 
 routes.Get("/api/admin/stats", [](const snc::http::HttpRequest& req)
     -> snc::http::HttpResponse {
     // auth_mw 已将 x-user-id 写入 req.headers
-    std::string op_id = req.headers.count("x-user-id") ? req.headers.at("x-user-id") : "";
+    std::string op_id = req.GetHeader("x-user-id");
     // TODO: 业务层实现统计查询
     return snc::http::HttpResponse::Ok(R"({"online":123})");
 });

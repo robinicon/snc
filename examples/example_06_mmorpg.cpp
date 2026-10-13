@@ -70,7 +70,8 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT,  SignalHandler);
     std::signal(SIGTERM, SignalHandler);
 
-    const std::string SECRET = "snc-mmorpg-dev-secret-key-32bytes!!";
+    // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
+    const std::string SECRET = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥
     JwtConfig jwt_cfg{SECRET, 7200, "snc-mmorpg", "HS256"};
 
     std::cout << "╔══════════════════════════════════════════════════════════╗" << std::endl;
@@ -95,6 +96,8 @@ int main(int argc, char* argv[]) {
         account_server.Listen(8080);
         account_server.Run();
     });
+    // ⚠️ 此为演示代码：detach 后线程脱离管理，主进程退出时可能访问已析构资源
+    // 生产环境请使用 joinable() + 优雅停机信号量同步等待
     account_thread.detach();
     std::cout << "      ✓ HTTP ://localhost:8080" << std::endl;
 
@@ -135,6 +138,7 @@ int main(int argc, char* argv[]) {
         master_admin.Listen(9001);
         master_admin.Run();
     });
+    // ⚠️ 此为演示代码：detach 后线程脱离管理
     master_thread.detach();
     std::cout << "      ✓ Admin HTTP ://localhost:9001" << std::endl;
 
@@ -151,6 +155,7 @@ int main(int argc, char* argv[]) {
     std::thread game_thread([&]() {
         game_svc.Start(8001, "game_01");
     });
+    // ⚠️ 此为演示代码：detach 后线程脱离管理
     game_thread.detach();
     std::cout << "      ✓ RPC  ://127.0.0.1:8001" << std::endl;
 
@@ -165,6 +170,7 @@ int main(int argc, char* argv[]) {
     std::thread world_thread([&]() {
         world_svc.Start(9100);
     });
+    // ⚠️ 此为演示代码：detach 后线程脱离管理
     world_thread.detach();
     std::cout << "      ✓ RPC  ://127.0.0.1:9100" << std::endl;
 

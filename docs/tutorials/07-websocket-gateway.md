@@ -150,7 +150,8 @@ private:
 // ── 主函数 ─────────────────────────────────────────────────────
 int main() {
     // 1. JWT 服务（与 HTTP 管理后台共用同一密钥）
-    snc::auth::JwtService jwt("ws-secret-key-must-be-32-bytes!!", 7200, "", "HS256");
+    snc::auth::JwtConfig jwt_cfg{"ws-secret-key-must-be-32-bytes!!", 7200, "", "HS256"};
+    snc::auth::JwtService jwt(jwt_cfg);
 
     // 2. 业务 Bridge
     MyGatewayBridge bridge(jwt);

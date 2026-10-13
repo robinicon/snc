@@ -9,8 +9,7 @@
 ///   - Reconnection stops after maxRetries attempts or when explicitly stopped.
 ///
 /// Usage:
-///   auto client = std::make_shared<RpcClient>(session, factory, opts);
-///   client->SetEventLoop(&loop);
+///   auto client = std::make_shared<RpcClient>(session, &loop, factory, opts);
 ///   client->Call(msgId, payload, len, replyCallback);
 
 #include <memory>
@@ -57,10 +56,11 @@ public:
     }
 
     /// Full constructor with auto-reconnect and event loop binding.
-    RpcClient(RpcSession::Ptr session, ConnFactory factory,
+    RpcClient(RpcSession::Ptr session, core::IEventLoop* el, ConnFactory factory,
               const ReconnectOptions& opts = ReconnectOptions{})
         : session_(std::move(session))
         , factory_(std::move(factory))
+        , eventLoop_(el)
         , opts_(opts)
     {
         UpdateConnCallback();
@@ -71,13 +71,6 @@ public:
         if (timerId_ > 0 && eventLoop_) {
             eventLoop_->TimerMgr().CancelTimer(timerId_);
         }
-    }
-
-    /// Bind the owning EventLoop. Required for timer-based delayed reconnect.
-    /// Must be called after construction if the full constructor is used.
-    void SetEventLoop(core::IEventLoop* el) {
-        std::lock_guard<std::mutex> lk(mtx_);
-        eventLoop_ = el;
     }
 
     /// Send an RPC request through the current session.

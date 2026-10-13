@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <functional>
 #include "snc/core/IConnection.h"
+#include "snc/core/SocketWrap.h"
 #include "snc/core/TimerManager.h"
 
 namespace snc {
@@ -28,6 +29,11 @@ public:
     virtual TimerManager& TimerMgr() = 0;
     virtual void SetMessageQueue(MessageQueue* q) = 0;
     virtual void SetWorkerPool(WorkerPool* pool) = 0;
+    // Accept-loop hooks — concrete implementations wire these up; default no-ops
+    // keep the interface safe to use through IEventLoop* without casts.
+    virtual void SetAcceptSock(SocketWrap sock) {}
+    virtual void SetAcceptCallback(std::function<void()> cb) {}
+    virtual void SetMessageDispatchFn(std::function<void(Msg::Ptr)> fn) {}
 };
 
 } // namespace core

@@ -21,6 +21,7 @@ lib/
 
 # IDE
 .vscode/
+.vs/         # Visual Studio 解决方案缓存
 .idea/
 *.swp
 *.swo

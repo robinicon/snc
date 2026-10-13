@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <functional>
+#include <mutex>
+#include <unordered_map>
 #include "snc/core/Msg.h"
 #include "snc/core/EntityHandle.h"
 #include "snc/core/DisconnectReason.h"
@@ -9,15 +11,17 @@
 namespace snc {
 namespace core {
 
+class WorkerPool;
+
 class IConnection : public std::enable_shared_from_this<IConnection> {
 public:
     using Ptr = std::shared_ptr<IConnection>;
     using MessageCallback = std::function<void(EntityHandle<IConnection> conn, Msg::Ptr msg)>;
-    // CloseCallback carries a DisconnectReason so callers can distinguish
-    // NORMAL close, TIMEOUT, CONN_ERROR, etc.
     using CloseCallback = std::function<void(Ptr conn, DisconnectReason reason)>;
-    // EnqueueFn routes parsed messages into the MessageQueue / WorkerPool pipeline.
     using EnqueueFn = std::function<bool(Msg::Ptr)>;
+    // HeartbeatCallback notifies the owner when the connection state changes (e.g. timeout).
+    using HeartbeatCallback = std::function<void(DisconnectReason reason)>;
+    using PruneExpiredFn = std::function<void()>;
 
     virtual ~IConnection() {}
     virtual int Fd() const = 0;
@@ -27,7 +31,14 @@ public:
     virtual void SetCloseCallback(CloseCallback cb) = 0;
     virtual void SetEnqueueFn(EnqueueFn fn) = 0;
     virtual void DispatchToQueue(Msg::Ptr msg) = 0;
+    virtual void SetHeartbeatCallback(HeartbeatCallback cb) {}
+    virtual void SetPruneExpired(PruneExpiredFn fn) {}
+    virtual EntityHandle<IConnection> GetConnHandle() { return EntityHandle<IConnection>{}; }
 };
+
+// WorkerDispatchFn must be defined AFTER the IConnection class body so that
+// EntityHandle<IConnection> can reference the complete type (MSVC requirement).
+using WorkerDispatchFn = std::function<void(EntityHandle<IConnection>, Msg::Ptr)>;
 
 } // namespace core
 } // namespace snc

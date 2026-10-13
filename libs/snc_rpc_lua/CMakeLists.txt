@@ -42,12 +42,10 @@ endif()
 # Fallback: common Windows paths
 if(NOT LUA_INCLUDE_DIR OR NOT LUA_LIBRARY)
     find_path(LUA_INCLUDE_DIR NAMES lua.h
-        PATHS "C:/Lua/include" "C:/Program Files/Lua" "E:/Lua/luajit/include"
-        NO_DEFAULT_PATH
+        PATHS "C:/Lua/include" "C:/Program Files/Lua" "E:/Lua/luajit/include" "D:/Lua/include"
     )
     find_library(LUA_LIBRARY NAMES lua lua-5.4 lua-5.3 luajit
-        PATHS "C:/Lua/lib" "C:/Program Files/Lua" "E:/Lua/luajit/lib"
-        NO_DEFAULT_PATH
+        PATHS "C:/Lua/lib" "C:/Program Files/Lua" "E:/Lua/luajit/lib" "D:/Lua/lib"
     )
 endif()
 

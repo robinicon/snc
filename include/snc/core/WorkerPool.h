@@ -13,6 +13,12 @@ namespace core {
 
 class WorkerPool {
 public:
+    using Ptr = std::shared_ptr<WorkerPool>;
+
+    static Ptr Create(size_t size) {
+        return std::make_shared<WorkerPool>(size);
+    }
+
     explicit WorkerPool(size_t size) : stop_(false), joined_(false) {
         for (size_t i = 0; i < size; ++i) {
             workers_.emplace_back([this]{ WorkerLoop(); });

@@ -114,7 +114,8 @@ snc::admin::PlayerRecord QueryPlayer(const std::string& uid) {
 // ── 主函数 ─────────────────────────────────────────────────────
 int main() {
     // 1. JWT 鉴权服务
-    snc::auth::JwtService jwt("admin-secret-key-must-be-32-bytes!!", 7200, "", "HS256");
+    snc::auth::JwtConfig jwt_cfg{"admin-secret-key-must-be-32-bytes!!", 7200, "", "HS256"};
+    snc::auth::JwtService jwt(jwt_cfg);
 
     // 2. AdminService 实例
     snc::admin::AdminService admin({

@@ -69,10 +69,10 @@ public:
         return true;
     }
 
-    // ── 回调设置 ──────────────────────────────────────────────
+    // ── Callbacks ───────────────────────────────────────────────────
     void SetMessageCallback(MessageCallback cb) override { messageCallback_ = std::move(cb); }
-    void SetCloseCallback(CloseCallback cb) override  { closeCallback_  = std::move(cb); }
-    void SetHeartbeatCallback(HeartbeatCallback cb)   { heartbeatCallback_ = std::move(cb); }
+    void SetCloseCallback(CloseCallback cb) override { closeCallback_ = std::move(cb); }
+    void SetHeartbeatCallback(HeartbeatCallback cb) override { heartbeatCallback_ = std::move(cb); }
 
     /// 获取包装本连接的 EntityHandle，用于跨线程安全传递
     EntityHandle<IConnection> GetConnHandle() {
@@ -81,7 +81,6 @@ public:
     }
 
     // ── RPC 会话清理钩子（Phase C4 – PruneExpired）────────────────
-    using PruneExpiredFn = std::function<void()>;
     void SetPruneExpired(PruneExpiredFn fn) { pruneExpiredFn_ = std::move(fn); }
     void InvokePruneExpired() { if (pruneExpiredFn_) pruneExpiredFn_(); }
 
@@ -95,7 +94,6 @@ public:
     // ── WorkerPool 直接分发钩子（Phase D）────────────────────────
     // 替代 SetEnqueueFn：将每条解析出的消息直接提交到 WorkerPool 线程，绕过全局消息队列。
     // 通常在应用层自行处理背压时使用。
-    using WorkerDispatchFn = std::function<void(EntityHandle<IConnection>, Msg::Ptr)>;
     void SetWorkerDispatchFn(WorkerDispatchFn fn, WorkerPool* pool) {
         workerDispatchFn_ = std::move(fn);
         workerPool_ = pool;

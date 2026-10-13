@@ -11,7 +11,7 @@
 
 Please do **not** open a public issue for security vulnerabilities.
 
-Report vulnerabilities to: **security@snc-framework.dev** (or the project maintainer's email).
+Report vulnerabilities to: please open a GitHub Security Advisory at https://github.com/[REPO]/security/advisories/new
 
 Include:
 - Description of the vulnerability

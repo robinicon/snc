@@ -11,22 +11,22 @@ namespace snc {
 namespace serial {
 namespace pb {
 
-uint8_t* PbSerializer::Encode(const char* proto_data, size_t proto_len,
-                              size_t& out_len) {
+std::vector<uint8_t> PbSerializer::Encode(const char* proto_data, size_t proto_len,
+                                          size_t& out_len) {
 #ifdef SNC_ENABLE_PROTOBUF
     out_len = 4 + proto_len;
-    uint8_t* buf = new uint8_t[out_len];
+    std::vector<uint8_t> buf(out_len);
     buf[0] = static_cast<uint8_t>((proto_len >> 24) & 0xFF);
     buf[1] = static_cast<uint8_t>((proto_len >> 16) & 0xFF);
     buf[2] = static_cast<uint8_t>((proto_len >> 8) & 0xFF);
     buf[3] = static_cast<uint8_t>(proto_len & 0xFF);
-    std::memcpy(buf + 4, proto_data, proto_len);
+    std::memcpy(buf.data() + 4, proto_data, proto_len);
     return buf;
 #else
     (void)proto_data;
     (void)proto_len;
     out_len = 0;
-    return nullptr;
+    return {};
 #endif
 }
 

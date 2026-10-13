@@ -53,6 +53,18 @@ snc_db        — 数据库适配层，内置 StubDatabase 用于测试
 | [05 - JWT 认证](docs/tutorials/05-jwt-auth.md) | JwtService、MakeJwtMiddleware、Bearer 认证 |
 | [06 - Admin API](docs/tutorials/06-admin-api.md) | AdminService 回调注入、玩家操作 |
 | [07 - WebSocket 网关](docs/tutorials/07-websocket-gateway.md) | IGatewayBridge、WS 握手、心跳 |
+| [08 - Redis 客户端](docs/tutorials/08-redis-config.md) | Stub/Hiredis 双后端配置与使用 |
+| [09 - 熔断器](docs/tutorials/09-circuit-breaker.md) | CircuitBreaker + TokenBucket + Registry |
+| [10 - 服务发现](docs/tutorials/10-service-discovery.md) | ServiceRegistry 注册、查询、负载均衡 |
+| [11 - 定时器管理器](docs/tutorials/11-timer-manager.md) | TimerManager 一次性与周期定时器 |
+| [12 - EntityHandle](docs/tutorials/12-entity-handle.md) | 跨线程安全访问连接的 weak_ptr 包装器 |
+| [13 - Runtime Monitor](docs/tutorials/13-monitor.md) | 运行时指标采集（IO 空闲率、背压、Lua 阻塞、队列深度） |
+| [14 - ClusterGateway](docs/tutorials/14-cluster-gateway.md) | 融合服务发现 + 熔断器的 RPC 转发网关 |
+| [15 - 数据库适配器](docs/tutorials/15-mysql-database.md) | IDatabase 抽象层与 StubDatabase 内存测试 |
+| [16 - 序列化](docs/tutorials/16-serialization.md) | Protobuf / FlatBuffers 序列化后端 |
+| [17 - 账号服](docs/tutorials/17-account-service.md) | AccountService：HTTP 注册/登录、JWT 签发、Gate 本地验签 |
+| [18 - WorkerPool](docs/tutorials/18-worker-pool.md) | 工作线程池：IO 与业务逻辑分离、消息分派 |
+| [19 - Actor 生命周期](docs/tutorials/19-actor-lifecycle.md) | PlayerActor 生命周期管理：登录→在线→踢出→析构，weak_ptr 跨线程安全访问 |
 
 ## 编译构建
 
@@ -161,27 +173,38 @@ SNC_LOG_ERROR("tag", "Fatal: %s", msg);
 
 ```cpp
 #include "snc/rpc/RpcServer.h"
+#include "snc/rpc/RpcSession.h"
 
-auto server = std::make_shared<rpc::RpcServer>(eventLoop);
-server->RegisterHandler(kLoginMsgId, [](const uint8_t* data, size_t len) {
+// RpcServer 无 Listen 方法；使用 core::Acceptor + EventLoop 接受连接
+auto server  = std::make_shared<rpc::RpcServer>();
+auto entity  = std::make_shared<rpc::Entity>(nullptr);
+auto session = std::make_shared<rpc::RpcSession>(entity);
+
+server->RegisterHandler(kLoginMsgId, [](IConnection::Ptr conn,
+                                         rpc::RpcSession::Ptr /*session*/,
+                                         Msg::Ptr msg,
+                                         std::function<void(RpcError, const uint8_t*, size_t)> respond) {
     // 处理登录请求
+    respond(RpcError::OK, nullptr, 0);
 });
-server->Listen(8001);
 ```
 
 ### 创建 RPC 客户端
 
 ```cpp
 #include "snc/rpc/RpcClient.h"
+#include "snc/rpc/RpcSession.h"
+#include "snc/rpc/Entity.h"
 
-auto client = rpc::RpcClient::Create(eventLoop, []() {
-    return std::make_shared<core::TcpConnection>(/* ... */);
-});
-client->Connect("127.0.0.1", 8001);
+auto entity      = std::make_shared<rpc::Entity>(nullptr);
+auto rpcSession  = std::make_shared<rpc::RpcSession>(entity);
+auto client      = std::make_shared<rpc::RpcClient>(rpcSession, eventLoop, nullptr);
 
-client->Call(kLoginMsgId, payload, len, [](RpcError err, const uint8_t* resp, size_t rlen) {
-    if (err == RpcError::OK) { /* 处理响应 */ }
-});
+std::string payload = "player_name";
+client->Call(kLoginMsgId, payload.c_str(), payload.size(),
+    [](RpcError err, const uint8_t* resp, size_t rlen) {
+        if (err == RpcError::OK) { /* 处理响应 */ }
+    });
 ```
 
 ### 熔断器
@@ -189,15 +212,23 @@ client->Call(kLoginMsgId, payload, len, [](RpcError err, const uint8_t* resp, si
 ```cpp
 #include "snc/circuit/CircuitBreaker.h"
 
-auto breaker = std::make_shared<circuit::CircuitBreaker>(
-    /* failureThreshold */ 5,
-    /* recoveryTimeoutMs */ 30000
-);
+circuit::CircuitConfig cfg;
+cfg.failureThreshold  = 5;   // 连续失败 5 次触发熔断
+cfg.openTimeout       = std::chrono::seconds(30);
+cfg.successThreshold  = 3;
+
+auto breaker = std::make_shared<circuit::CircuitBreaker>("my_service", cfg);
 
 if (breaker->Allow()) {
-    // 继续调用
+    // 允许请求，执行业务逻辑
+    try {
+        // ...
+        breaker->RecordSuccess();
+    } catch (...) {
+        breaker->RecordFailure();
+    }
 } else {
-    // 请求被拒绝，服务已熔断
+    // 服务已熔断，执行降级逻辑
 }
 ```
 
@@ -206,11 +237,13 @@ if (breaker->Allow()) {
 ```cpp
 #include "snc/discovery/ServiceRegistry.h"
 
-auto reg = std::make_shared<discovery::ServiceRegistry>();
+auto reg = discovery::ServiceRegistry::Create();
 reg->Register("login", "10.0.0.1", 8001, /* weight */ 1);
 reg->Register("map",   "10.0.0.2", 8002, /* weight */ 2);
 
-auto endpoints = reg->List("login"); // 返回 Endpoint 列表
+auto endpoints = reg->GetHealthy("login");  // 返回 ServiceList（健康节点）
+auto all       = reg->GetAll("login");      // 返回所有节点（含不健康）
+auto one       = reg->Pick(discovery::BalanceStrategy::ROUND_ROBIN, "login");
 ```
 
 ## 目录结构
@@ -221,28 +254,48 @@ snc/
 ├── CMakePresets.json       # 预定义构建预设
 ├── include/snc/            # 公共头文件（安装目标）
 │   ├── base/               # 日志、线程、数据结构
-│   ├── core/               # 事件循环、TCP、消息
-│   ├── rpc/                # RPC 客户端、服务端、Entity
-│   ├── circuit/            # 熔断器
-│   ├── discovery/          # 服务注册表
-│   ├── gateway/            # 集群网关
-│   └── monitor/            # 运行时指标
-├── src/core/               # 核心库源码
-├── libs/                   # 库子项目
+│   ├── core/               # 事件循环、TCP、消息、消息队列、WorkerPool
+│   ├── rpc/                # RPC 客户端、服务端、Entity、EntityHandle、MsgRouter
+│   ├── rpc/lua/            # Lua RPC API 绑定
+│   ├── http/               # HTTP 服务器、路由器
+│   ├── auth/               # JWT 认证服务
+│   ├── admin/              # Admin 管理 API
+│   ├── ws/                 # WebSocket 网关
+│   ├── circuit/            # 熔断器、令牌桶限流
+│   ├── discovery/          # 服务注册表（内存 + Redis 后端）
+│   ├── gateway/            # 集群网关（融合发现+熔断）
+│   ├── monitor/            # 运行时指标采集
+│   ├── redis/              # Redis 客户端（stub / hiredis）
+│   ├── db/                 # 数据库抽象层（IDatabase / StubDatabase）
+│   ├── serial/             # 序列化接口（ISerializer / PbSerializer / FbsSerializer）
+│   ├── mmorpg/             # MMORPG 服务组件（GateService、GameService、WorldService）
+│   ├── core.h / rpc.h      # 聚合头文件
+├── src/                    # 核心库源码
+├── libs/                   # 各子模块 CMake 子项目
 │   ├── snc_base/
 │   ├── snc_core/
 │   ├── snc_rpc/
+│   ├── snc_http/
+│   ├── snc_auth/
+│   ├── snc_admin/
+│   ├── snc_websocket/
 │   ├── snc_circuit/
 │   ├── snc_discovery/
 │   ├── snc_gateway/
 │   ├── snc_monitor/
-│   ├── snc_rpc_lua/
+│   ├── snc_redis/
+│   ├── snc_db/
 │   ├── snc_serial_pb/
 │   ├── snc_serial_fbs/
-│   └── snc_db/
-├── docs/tutorials/         # 入门教程
-├── docs/modules/           # 模块文档（Redis 等）
-└── thirdparty/             # 第三方头文件（doctest）
+│   └── snc_rpc_lua/
+├── examples/               # 示例代码
+├── proto/                  # Protobuf 定义文件
+├── tests/                  # 单元测试（自包含 Catch2-like 测试框架）
+├── docs/
+│   ├── tutorials/          # 入门教程（01~16）
+│   ├── modules/            # 模块详细文档
+│   └── design/             # 架构设计文档
+└── thirdparty/             # 第三方头文件
 ```
 
 ## 许可证

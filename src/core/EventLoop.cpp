@@ -31,12 +31,6 @@ EventLoopIOCP::~EventLoopIOCP()
 {
 }
 
-void EventLoopIOCP::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
-{
-    std::lock_guard<std::mutex> lock(connMutex_);
-    workerDispatch_[fd] = std::move(fn);
-}
-
 void EventLoopIOCP::Run()
 {
     thread_id_ = std::this_thread::get_id();
@@ -45,6 +39,9 @@ void EventLoopIOCP::Run()
 
     while (running_.load(std::memory_order_acquire))
     {
+        // Process pending accepts before I/O polling
+        if (acceptCallback_) acceptCallback_();
+
         // Collect open connections
         std::vector<int> fds;
         {
@@ -198,12 +195,6 @@ EventLoopEpoll::~EventLoopEpoll()
     if (wakeupPipe_[1] >= 0) close(wakeupPipe_[1]);
 }
 
-void EventLoopEpoll::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
-{
-    std::lock_guard<std::mutex> lock(connMutex_);
-    workerDispatch_[fd] = std::move(fn);
-}
-
 void EventLoopEpoll::Run()
 {
     thread_id_ = std::this_thread::get_id();
@@ -215,6 +206,9 @@ void EventLoopEpoll::Run()
 
     while (running_.load(std::memory_order_acquire))
     {
+        // Process pending accepts before I/O polling
+        if (acceptCallback_) acceptCallback_();
+
         int n = epoll_wait(epollFd_, events, MAX_EVENTS, 100); // 100ms timeout
         if (n < 0)
         {
@@ -362,12 +356,6 @@ EventLoopKqueue::~EventLoopKqueue()
     if (wakeupPipe_[1] >= 0) close(wakeupPipe_[1]);
 }
 
-void EventLoopKqueue::SetWorkerDispatchFn(int fd, WorkerDispatchFn fn)
-{
-    std::lock_guard<std::mutex> lock(connMutex_);
-    workerDispatch_[fd] = std::move(fn);
-}
-
 void EventLoopKqueue::Run()
 {
     thread_id_ = std::this_thread::get_id();
@@ -379,6 +367,9 @@ void EventLoopKqueue::Run()
 
     while (running_.load(std::memory_order_acquire))
     {
+        // Process pending accepts before I/O polling
+        if (acceptCallback_) acceptCallback_();
+
         int n = kevent(kqueueFd_, nullptr, 0, events, MAX_EVENTS, nullptr); // blocking
         if (n < 0)
         {

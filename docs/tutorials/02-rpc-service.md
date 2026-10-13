@@ -76,19 +76,17 @@ void RunServer(uint16_t port)
 using namespace snc;
 using namespace snc::rpc;
 
-void RunClient(const std::string& serverHost, uint16_t serverPort)
+void RunClient(const std::string& serverHost, uint16_t serverPort, core::IEventLoop* eventLoop)
 {
-    auto eventLoop = core::CreateEventLoop();
-    if (!eventLoop) return;
-
-    // RpcClient 自动管理连接和重连
-    auto rpcClient = std::make_shared<RpcClient>(nullptr);
-    auto rpcSession = std::make_shared<RpcSession>(nullptr);
-    rpcClient->SetSession(rpcSession);
+    // RpcSession 需要绑定一个 Entity（持有连接），Entity 可传 nullptr 延迟绑定
+    auto entity    = std::make_shared<Entity>(nullptr);
+    auto rpcSession = std::make_shared<RpcSession>(entity);
+    auto rpcClient = std::make_shared<RpcClient>(
+        rpcSession, eventLoop, nullptr);  // 事件循环通过构造函数传入
 
     // 发起 RPC 调用
-    auto req = core::Msg::Create(0x1001, "player_name", 10);
-    rpcClient->Call(0x1001, req->Payload(), req->PayloadLen(),
+    std::string payload = "player_name";
+    rpcClient->Call(0x1001, payload.c_str(), payload.size(),
         [](RpcError err, const uint8_t* resp, size_t len) {
             if (err == RpcError::OK) {
                 int32_t code = *reinterpret_cast<const int32_t*>(resp);

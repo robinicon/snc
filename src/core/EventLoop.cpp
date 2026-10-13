@@ -5,26 +5,7 @@
 //   - Linux:   EventLoopEpoll  (epoll_wait()).
 //   - macOS:   EventLoopKqueue (kevent() – BSD equivalent of epoll).
 
-#ifdef _WIN32
-    // Must include winsock2.h BEFORE windows.h to avoid macro conflicts
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #include <winsock2.h>
-    #include <windows.h>
-#else
-    #include <sys/epoll.h>
-    #include <sys/event.h>
-    #include <sys/socket.h>
-    #include <sys/types.h>
-    #include <unistd.h>
-    #include <errno.h>
-    #include <fcntl.h>
-#endif
-
+#include "snc/base/Common.h"
 #include "snc/core/EventLoop.h"
 #include "snc/core/TcpConnection.h"
 #include "snc/core/MessageQueue.h"
@@ -517,5 +498,19 @@ void EventLoopKqueue::ProcessRpcPruneAll()
 }
 
 #endif // SNC_PLATFORM_MACOS
+
+// ── Factory ─────────────────────────────────────────────────────
+std::unique_ptr<IEventLoop> CreateEventLoop()
+{
+#ifdef SNC_PLATFORM_WINDOWS
+    return std::make_unique<EventLoopIOCP>();
+#elif defined(SNC_PLATFORM_LINUX)
+    return std::make_unique<EventLoopEpoll>();
+#elif defined(SNC_PLATFORM_MACOS)
+    return std::make_unique<EventLoopKqueue>();
+#else
+    #error "Unsupported platform"
+#endif
+}
 
 } // namespace snc::core

@@ -23,6 +23,15 @@ This document tracks known issues and limitations in the SNC framework.
 ### snc_db
 - Redis-backed service discovery requires `hiredis`. Without it, the in-memory registry is used.
 
+### snc_auth (cryptographic module — placeholder)
+- **SHA-256 and HMAC-SHA256 are NOT implemented.** The current implementations are non-functional placeholders:
+  - `Sha256()` returns the input unchanged.
+  - `HmacSha256()` returns `data + key`.
+- `JwtService::Sign()` and `Verify()` are therefore non-functional — signatures cannot be verified.
+- **Do not use `snc_auth` for production authentication.**
+- A correct implementation (RFC 6234 / RFC 2104) is planned for a future release.
+- See [CRYPTO_NOTICE.md](CRYPTO_NOTICE.md) for the full status and migration guidance.
+
 ## Performance Notes
 
 ### TcpConnection flush behavior

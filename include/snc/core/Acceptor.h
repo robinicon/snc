@@ -1,6 +1,13 @@
 ﻿#pragma once
 
 #include <functional>
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
 #include "snc/core/SocketWrap.h"
 #include "snc/core/IConnection.h"
 #include "snc/core/TcpConnection.h"

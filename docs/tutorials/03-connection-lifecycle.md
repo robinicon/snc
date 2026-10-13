@@ -174,7 +174,7 @@ private:
 
 int main()
 {
-    base::GetLogger().Start("game.log");
+    base::InitLogger(base::LogLevel::INFO);
     GameServer server;
     server.Run(9000);
     return 0;

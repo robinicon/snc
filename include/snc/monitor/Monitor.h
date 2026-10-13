@@ -39,8 +39,12 @@ public:
         while (queueDepth > oldMax &&
                !maxDepth_.compare_exchange_weak(oldMax, queueDepth,
                                                 std::memory_order_relaxed)) {}
-        depthSamples_.push_back(queueDepth);
-        if (depthSamples_.size() > 1000) depthSamples_.erase(depthSamples_.begin());
+        // depthSamples_ protected by mtx_ to avoid data race with Snapshot()
+        {
+            std::lock_guard<std::mutex> lk(mtx_);
+            depthSamples_.push_back(queueDepth);
+            if (depthSamples_.size() > 1000) depthSamples_.erase(depthSamples_.begin());
+        }
     }
 
     struct Report {

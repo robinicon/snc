@@ -47,8 +47,8 @@ using namespace snc::core;
 
 int main()
 {
-    // 启动日志
-    base::GetLogger().Start("server.log");
+    // 启动日志（输出到控制台，不写文件）
+    base::InitLogger(base::LogLevel::INFO);
 
     // 创建事件循环（Windows 使用 IOCP，Linux 使用 epoll）
     auto eventLoop = CreateEventLoop();

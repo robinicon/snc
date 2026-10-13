@@ -1,15 +1,17 @@
-// EntityHandle — safe cross-thread reference to an Entity.
+// EntityHandle — 跨线程安全引用实体（连接/玩家）的封装。
 //
-// Prevents use-after-free when IO thread destroys a connection while
-// a Worker thread is processing a task for that connection's Entity.
+// 解决场景：IO 线程销毁了连接对象，但 Worker 线程正在处理该连接的任务，
+//          导致 use-after-free 崩溃。
 //
-// Usage:
-//   1. Create from shared_ptr<T>:
-//      auto handle = EntityHandle::from(entity);
-//   2. In Worker task, lock to get temporary strong ref:
-//      auto entity = handle.lock();
-//      if (!entity) return; // Entity was destroyed
-//   3. Entity destructor calls Invalidate() to let all handles become stale
+// 原理：内部存储 weak_ptr，worker 线程 lock() 获取临时强引用；
+//      若对象已销毁则返回 nullptr，避免非法访问。
+//
+// 使用方式：
+//   1. 从 shared_ptr<T> 创建：auto handle = EntityHandle::from(entity);
+//   2. Worker 任务中锁定获取临时强引用：
+//        auto entity = handle.lock();
+//        if (!entity) return; // 实体已被销毁
+//   3. 实体析构时调用 Invalidate()，使所有持有者失效
 #pragma once
 
 #include <memory>

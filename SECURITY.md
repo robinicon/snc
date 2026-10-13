@@ -26,3 +26,13 @@ You will receive a response within 48 hours. Valid reports will be credited in t
 - The framework uses C++17 smart pointers and RAII to minimize use-after-free and memory leak risks.
 - RPC communication uses plain TCP — applications should run over TLS in production (not provided by this framework).
 - AddressSanitizer is available for Debug builds via `SNC_ENABLE_SANITIZER=ON`.
+
+## ⚠️ Cryptographic Module Status
+
+The `snc_auth` module is **not production-ready for authentication**:
+
+- **SHA-256 / HMAC-SHA256 are not implemented** — the current implementations are non-functional placeholders.
+- **Do NOT use `JwtService::Sign()` / `Verify()` in production** — generated signatures are invalid and cannot be verified.
+- A proper, audited cryptographic implementation is planned for a future release.
+
+See [CRYPTO_NOTICE.md](CRYPTO_NOTICE.md) for details.

@@ -1,24 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
 project(snc_circuit VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Header-only library — create a dummy static lib for linking consistency
-add_library(snc_circuit STATIC
-    ${CMAKE_SOURCE_DIR}/libs/snc_circuit/dummy.cpp
-)
+# Header-only library
+add_library(snc_circuit INTERFACE)
 
 target_include_directories(snc_circuit
-    PUBLIC
+    INTERFACE
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
 if(MSVC)
-    target_compile_options(snc_circuit PRIVATE /W4 /WX- /utf-8)
-    target_compile_definitions(snc_circuit PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(snc_circuit INTERFACE /W4 /utf-8)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(snc_circuit PRIVATE -Wall -Wextra)
+    target_compile_options(snc_circuit INTERFACE -Wall -Wextra)
 endif()
-

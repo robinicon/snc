@@ -17,6 +17,23 @@ struct NetBuffer {
 
     NetBuffer(const NetBuffer&) = delete;
     NetBuffer& operator=(const NetBuffer&) = delete;
+    NetBuffer(NetBuffer&& other) noexcept
+        : buf_(other.buf_), cap_(other.cap_), pos_(other.pos_), len_(other.len_) {
+        other.buf_ = nullptr;
+        other.cap_ = other.pos_ = other.len_ = 0;
+    }
+    NetBuffer& operator=(NetBuffer&& other) noexcept {
+        if (this != &other) {
+            delete[] buf_;
+            buf_ = other.buf_;
+            cap_ = other.cap_;
+            pos_ = other.pos_;
+            len_ = other.len_;
+            other.buf_ = nullptr;
+            other.cap_ = other.pos_ = other.len_ = 0;
+        }
+        return *this;
+    }
 
     // Write a value in network byte order
     template <typename T>

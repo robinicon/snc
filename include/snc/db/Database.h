@@ -13,6 +13,7 @@
 #include <chrono>
 #include <mutex>
 #include <atomic>
+#include <cstdio>
 
 namespace snc {
 namespace db {
@@ -34,10 +35,33 @@ struct Value {
     bool        bool_val  = false;
 
     static Value Null() { return Value{ValueType::NULL_V}; }
-    static Value FromStr(const std::string& s) { return Value{ValueType::STRING, s}; }
-    static Value FromInt(int64_t i) { return Value{ValueType::INT, 0, i}; }
-    static Value FromFloat(double f) { return Value{ValueType::FLOAT, 0, 0, f}; }
-    static Value FromBool(bool b) { return Value{ValueType::BOOL, 0, 0, 0, b}; }
+    static Value FromStr(const std::string& s) {
+        // Try to parse as integer
+        try {
+            size_t pos;
+            int64_t ival = std::stoll(s, &pos);
+            if (pos == s.size()) return Value{ValueType::INT, "", ival, 0.0, false};
+        } catch (...) {}
+        try {
+            size_t pos;
+            double fval = std::stod(s, &pos);
+            if (pos == s.size()) return Value{ValueType::FLOAT, "", 0, fval, false};
+        } catch (...) {}
+        return Value{ValueType::STRING, s};
+    }
+    static Value FromInt(int64_t i) { return Value{ValueType::INT, "", i, 0.0, false}; }
+    static Value FromFloat(double f) { return Value{ValueType::FLOAT, "", 0, f, false}; }
+    static Value FromBool(bool b) { return Value{ValueType::BOOL, "", 0, 0.0, b}; }
+
+    std::string ToString() const {
+        switch (type) {
+            case ValueType::INT:    return std::to_string(int_val);
+            case ValueType::FLOAT:  return std::to_string(float_val);
+            case ValueType::BOOL:   return bool_val ? "true" : "false";
+            case ValueType::STRING: return str_val;
+            default:                return "";
+        }
+    }
 };
 
 inline const char* ValueTypeStr(ValueType t) {
@@ -149,6 +173,9 @@ private:
             r = ExecUpdate_(s);
         } else if (upper.find("DELETE FROM ") == 0) {
             r = ExecDelete_(s);
+        } else if (upper.find("CREATE TABLE") == 0) {
+            // Stub: CREATE TABLE is a no-op (schema is inferred from INSERT)
+            r.ok = true;
         } else {
             r.ok = false;
             r.error = "Unsupported SQL: " + s;
@@ -206,13 +233,30 @@ private:
 
         for (const auto& rowVec : data) {
             Row row;
-            for (size_t i = 0; i < cols.size() && i < rowVec.size(); ++i) {
-                std::string colName = (cols[i] == "*") ? (i < schema.size() ? schema[i] : std::to_string(i)) : cols[i];
-                row[colName] = rowVec[i];
+            for (const auto& colName : cols) {
+                // Find this column's index in the full schema
+                size_t colIdx = std::string::npos;
+                for (size_t k = 0; k < schema.size(); ++k) {
+                    if (schema[k] == colName) { colIdx = k; break; }
+                }
+                if (colIdx == std::string::npos || colIdx >= rowVec.size()) continue;
+                row[colName] = rowVec[colIdx];
             }
             if (!whereCol.empty()) {
-                auto it2 = row.find(whereCol);
-                if (it2 == row.end() || it2->second.str_val != whereVal) continue;
+                // Find the column index in the full schema (not just the selected columns)
+                size_t whereIdx = std::string::npos;
+                for (size_t k = 0; k < schema.size(); ++k) {
+                    if (schema[k] == whereCol) { whereIdx = k; break; }
+                }
+                if (whereIdx == std::string::npos || whereIdx >= rowVec.size()) continue;
+                const auto& cell = rowVec[whereIdx];
+                bool match = false;
+                if (cell.type == ValueType::INT) {
+                    try { match = (cell.int_val == std::stoll(whereVal)); } catch (...) {}
+                } else {
+                    match = (cell.str_val == whereVal);
+                }
+                if (!match) continue;
             }
             r.rows.push_back(row);
         }
@@ -255,15 +299,26 @@ private:
         if (vals.size() != cols.size()) { r.ok = false; r.error = "INSERT: col/val mismatch"; ++totalErrors_; return r; }
 
         // Store in table
-        auto& data = table_[tableName];
+        table_[tableName]; // ensure entry exists
         schemas_[tableName] = cols;
 
         std::vector<Value> row;
-        int64_t id = static_cast<int64_t>(data.size()) + 1;
-        for (auto& v : vals) row.push_back(Value::FromStr(v));
-        data.push_back(row);
+        row.reserve(vals.size());
+        // Handle auto-increment: if first column is "id" and value is "NULL", assign sequential ID
+        if (!cols.empty() && cols[0] == "id" && !vals.empty() && vals[0] == "NULL") {
+            auto& data = table_[tableName];
+            int64_t next_id = static_cast<int64_t>(data.size()) + 1;
+            row.push_back(Value::FromInt(next_id));
+            for (size_t j = 1; j < vals.size(); ++j) row.push_back(Value::FromStr(vals[j]));
+        } else {
+            for (auto& v : vals) {
+                row.push_back(Value::FromStr(v));
+            }
+        }
+        auto& data = table_[tableName];
+        data.push_back(std::move(row));
         r.rowsAffected = 1;
-        r.lastInsertId = id;
+        r.lastInsertId = data.back()[0].int_val;
         return r;
     }
 
@@ -323,9 +378,18 @@ private:
                 bool match = (rowVec[0].str_val == wVal); // simplistic: first col = where col
                 if (!match) continue;
             }
-            // Apply updates (simplistic: update by position)
-            for (size_t i = 0; i < updates.size() && i + 1 < rowVec.size(); ++i) {
-                rowVec[i + 1] = Value::FromStr(updates[std::to_string(i)]);
+            // Apply updates by column name match
+            auto& schema = schemas_[tableName];
+            size_t col_idx = 0;
+            for (auto& [colName, newVal] : updates) {
+                // Find column index in schema
+                size_t targetIdx = 0;
+                bool found = false;
+                for (size_t k = 0; k < schema.size(); ++k) {
+                    if (schema[k] == colName) { targetIdx = k; found = true; break; }
+                }
+                if (!found || targetIdx + 1 >= rowVec.size()) continue; // id is at index 0
+                rowVec[targetIdx + 1] = Value::FromStr(newVal);
             }
             ++affected;
         }
@@ -359,7 +423,22 @@ private:
             std::remove_if(it->second.begin(), it->second.end(),
                 [&](const std::vector<Value>& row) {
                     if (wCol.empty()) return true;
-                    return row.empty() || row[0].str_val != wVal;
+                    if (row.empty()) return false;
+                    // Find column index in schema
+                    auto& schema = schemas_[tableName];
+                    size_t idx = std::string::npos;
+                    for (size_t k = 0; k < schema.size(); ++k) {
+                        if (schema[k] == wCol) { idx = k; break; }
+                    }
+                    if (idx == std::string::npos || idx >= row.size()) return false;
+                    const auto& cell = row[idx];
+                    bool match = false;
+                    if (cell.type == ValueType::INT) {
+                        try { match = (cell.int_val == std::stoll(wVal)); } catch (...) {}
+                    } else {
+                        match = (cell.str_val == wVal);
+                    }
+                    return !match;
                 }),
             it->second.end());
         r.rowsAffected = affected;
@@ -377,7 +456,7 @@ private:
 
     static std::string SkipKeyword_(const std::string& s, const std::string& kw) {
         std::string us = s;
-        for (auto& c : us) c = toupper(static_cast<unsigned char>(c));
+        for (auto& c : us) c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
         size_t pos = us.find(kw);
         if (pos == std::string::npos) return s;
         return s.substr(pos + kw.size());
@@ -385,7 +464,7 @@ private:
 
     static size_t FindKeywordPos_(const std::string& s, const std::string& kw) {
         std::string us = s;
-        for (auto& c : us) c = toupper(static_cast<unsigned char>(c));
+        for (auto& c : us) c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
         return us.find(kw);
     }
 

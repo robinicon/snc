@@ -22,13 +22,11 @@ static constexpr int32_t kMsgHeartbeatPong = 0x0002;
 
 // ── TcpConnection ────────────────────────────────────────────────
 //
-// Features (Phase C):
-//   C1 – Heartbeat: periodically sends ping; waits for pong.  3 missed
-//        pongs → DisconnectReason::TIMEOUT.
-//   C3 – Backpressure: when sendBuffer_ exceeds kSendBufferHighWatermark,
-//        the connection stops calling ParseMessages() on new data until
-//        the buffer drains below kSendBufferLowWatermark.
-//   C5 – OnDisconnect callback with reason (DisconnectReason).
+// 功能特性（对应 Phase C）：
+//   C1 – 心跳保活：周期性发送 ping，等待 pong。连续 3 次未收到 pong → TIMEOUT 断线。
+//   C3 – 反向压制的发送背压：当 sendBuffer_ 超过高水位线时，暂停解析新数据；
+//        缓冲区回落到低水位线以下时恢复解析。
+//   C5 – OnDisconnect 回调：断开时携带 DisconnectReason 原因码。
 
 class TcpConnection : public IConnection {
 public:
@@ -46,25 +44,23 @@ public:
 
     int Fd() const override { return sock_.Fd(); }
 
-    // ── Send / Close ───────────────────────────────────────────
+    // ── 发送 / 关闭 ───────────────────────────────────────────
     bool Send(Msg::Ptr msg) override {
         if (!msg || !sock_.Valid()) return false;
         const char* data = msg->Data();
         size_t total = msg->TotalLen();
         size_t prevBuffered = sendBuffer_.size() - sendOffset_;
         sendBuffer_.insert(sendBuffer_.end(), data, data + total);
-        // Only auto-flush when the buffer was previously empty (or nearly so)
-        // to avoid a syscall per message in a send loop, while still flushing
-        // the first message of each batch promptly.
+        // 仅当缓冲区先前为空（或接近空）时自动 flush，避免在快速发送循环中每条消息都触发系统调用，
+        // 同时确保每批首条消息及时发出。
         if (prevBuffered <= total) {
             FlushSendBuffer();
         }
         return true;
     }
 
-    // Close the connection and fire closeCallback_ exactly once.
-    // Returns true if this call performed the close; false if another
-    // concurrent path already closed it.
+    /// 关闭连接并恰好触发一次 closeCallback_。
+    /// 返回 true 表示本次调用执行了关闭；false 表示其他并发路径已先关闭。
     bool Close() override {
         State expected = State::Connected;
         if (!state_.compare_exchange_strong(expected, State::Closed)) return false;
@@ -73,34 +69,32 @@ public:
         return true;
     }
 
-    // ── Callbacks ──────────────────────────────────────────────
+    // ── 回调设置 ──────────────────────────────────────────────
     void SetMessageCallback(MessageCallback cb) override { messageCallback_ = std::move(cb); }
     void SetCloseCallback(CloseCallback cb) override  { closeCallback_  = std::move(cb); }
     void SetHeartbeatCallback(HeartbeatCallback cb)   { heartbeatCallback_ = std::move(cb); }
 
-    // Returns an EntityHandle wrapping this connection as an Entity.
+    /// 获取包装本连接的 EntityHandle，用于跨线程安全传递
     EntityHandle<IConnection> GetConnHandle() {
         auto self = shared_from_this();
         return EntityHandle<IConnection>::from(std::shared_ptr<IConnection>(self));
     }
 
-    // ── RPC session hook (for Phase C4 – PruneExpired) ───────────
+    // ── RPC 会话清理钩子（Phase C4 – PruneExpired）────────────────
     using PruneExpiredFn = std::function<void()>;
     void SetPruneExpired(PruneExpiredFn fn) { pruneExpiredFn_ = std::move(fn); }
     void InvokePruneExpired() { if (pruneExpiredFn_) pruneExpiredFn_(); }
 
-    // ── MessageQueue dispatch hook (Phase D) ─────────────────────
-    // When SetEnqueueFn is set, messages are routed through the global
-    // MessageQueue (backpressure + high/low watermarks).
+    // ── 消息队列分发钩子（Phase D）──────────────────────────────
+    // 设置后，收到的消息通过全局 MessageQueue 路由（支持背压 + 高低水位线控制）。
     void SetEnqueueFn(EnqueueFn fn) override { enqueueFn_ = std::move(fn); }
     void DispatchToQueue(Msg::Ptr msg) override {
         if (enqueueFn_) enqueueFn_(std::move(msg));
     }
 
-    // ── WorkerPool dispatch hook (Phase D – direct submission) ───
-    // Alternative to SetEnqueueFn: submit each parsed message directly
-    // to a WorkerPool thread, bypassing the global MessageQueue.
-    // Typically used when backpressure is handled at the application level.
+    // ── WorkerPool 直接分发钩子（Phase D）────────────────────────
+    // 替代 SetEnqueueFn：将每条解析出的消息直接提交到 WorkerPool 线程，绕过全局消息队列。
+    // 通常在应用层自行处理背压时使用。
     using WorkerDispatchFn = std::function<void(EntityHandle<IConnection>, Msg::Ptr)>;
     void SetWorkerDispatchFn(WorkerDispatchFn fn, WorkerPool* pool) {
         workerDispatchFn_ = std::move(fn);
@@ -108,11 +102,11 @@ public:
     }
     WorkerPool* GetWorkerPool() const { return workerPool_; }
 
-    // ── Heartbeat ──────────────────────────────────────────────
-    // Call after construction (or in SetNewConnectionCallback).
-    // intervalMs  – how often to send a ping  (default 30 000 ms)
-    // pongTimeoutMs – time to wait for a pong after last ping sent (default 10 000 ms)
-    // maxMissed   – consecutive missed pongs before declaring timeout (default 3)
+    // ── 心跳 ──────────────────────────────────────────────────
+    /// 构造后（或在 SetNewConnectionCallback 中）调用。
+    /// intervalMs      – 发送 ping 的间隔（默认 30000 ms）
+    /// pongTimeoutMs   – 最后一次 ping 发出后等待 pong 的超时时间（默认 10000 ms）
+    /// maxMissed       – 连续未收到 pong 的最大次数，超过则判为超时（默认 3）
     void StartHeartbeat(long long intervalMs = 30000,
                         long long pongTimeoutMs = 10000,
                         int maxMissed = 3) {
@@ -131,18 +125,18 @@ public:
         }
     }
 
-    // Called by the event loop on every ProcessTimers() cycle.
+    /// 由事件循环在每个 ProcessTimers() 周期调用，处理心跳状态机。
     void ProcessHeartbeatTick() {
         if (!heartbeatActive_) return;
         long long now = NowMs();
 
-        // 1) Is it time to send another ping?
+        // 1) 是否到了发送下一个 ping 的时机？
         if (now >= heartbeatNextPingAtMs_) {
             SendHeartbeatPing();
             ScheduleNextPing();
         }
 
-        // 2) Has the last ping timed out waiting for pong?
+        // 2) 最近一次 ping 是否已超时未收到 pong？
         if (lastPingSentAtMs_ > 0 && now - lastPingSentAtMs_ > heartbeatPongTimeout_) {
             ++heartbeatMissed_;
             lastPingSentAtMs_ = 0;
@@ -159,11 +153,12 @@ public:
         }
     }
 
-    // ── Read / Parse ───────────────────────────────────────────
+    // ── 接收 / 解析 ───────────────────────────────────────────
     void ProcessRecvData() {
         char buf[4096];
         ssize_t n = sock_.Recv(buf, sizeof(buf));
         if (n <= 0) {
+            // 对端关闭或读取错误，触发断开回调
             State expected = State::Connected;
             if (!state_.compare_exchange_strong(expected, State::Closed)) return;
             sock_.Close();
@@ -176,33 +171,33 @@ public:
         }
         recvBuffer_.insert(recvBuffer_.end(), buf, buf + n);
 
-        // C3 – Backpressure gate: skip parsing while send buffer is above high watermark.
-        // When below low watermark, backpressure is lifted and parsing resumes.
+        // C3 – 背压门控：当发送缓冲区超过高水位线时，跳过消息解析以减轻压力；
+        //      缓冲区回落到低水位线以下时，背压解除，继续解析。
         if (static_cast<long long>(sendBuffer_.size() - sendOffset_) > kSendBufferHighWatermark) return;
 
         ParseMessages();
     }
 
+    /// 将 sendBuffer_ 中未发送的数据尽可能写入 socket，更新 sendOffset_。
     void FlushSendBuffer() {
         if (sendOffset_ >= sendBuffer_.size() || !sock_.Valid()) return;
         size_t available = sendBuffer_.size() - sendOffset_;
         if (available == 0) { sendOffset_ = 0; return; }
         ssize_t n = sock_.Send(sendBuffer_.data() + sendOffset_, available);
         if (n > 0) sendOffset_ += static_cast<size_t>(n);
-        // Compact when more than half is consumed (reclaim at most sendBuffer_.size()/2).
+        // 已发送超过一半时压缩缓冲区，最多回收 sendBuffer_.size()/2 的空间
         if (sendOffset_ >= sendBuffer_.size() / 2) CompactSendBuffer();
     }
 
-    // Check backpressure state (for external callers such as the event loop).
+    /// 供外部（如事件循环）查询当前是否处于背压状态
     bool IsBackpressuring() const {
         return static_cast<long long>(sendBuffer_.size() - sendOffset_) > kSendBufferHighWatermark;
     }
 
 private:
-    // ── Ring-buffer compaction ───────────────────────────────────
-    // Shifts remaining live data to the front of the vector so that
-    // sendOffset_/recvOffset_ can be reset to 0. Called when the
-    // "used but not yet consumed" tail grows beyond a threshold.
+    // ── 环形缓冲区压缩 ───────────────────────────────────────────
+    /// 将 sendBuffer_ 中剩余未发送的数据前移，使 sendOffset_ 归零。
+    /// 当"已消费但尚未移位"的尾部累积超过阈值时调用。
     void CompactSendBuffer() {
         if (sendOffset_ == 0) return;
         size_t avail = sendBuffer_.size() - sendOffset_;
@@ -227,6 +222,7 @@ private:
             tp.time_since_epoch()).count();
     }
 
+    /// 发送心跳 ping 并记录发送时刻
     void SendHeartbeatPing() {
         auto ping = Msg::Create(kMsgHeartbeatPing);
         sock_.Send(ping->Data(), ping->TotalLen());
@@ -234,10 +230,12 @@ private:
         heartbeatMissed_  = 0;
     }
 
+    /// 计算下次 ping 发送时间戳
     void ScheduleNextPing() {
         heartbeatNextPingAtMs_ = NowMs() + heartbeatIntervalMs_;
     }
 
+    /// 逐条解析 recvBuffer_ 中的完整消息，并按当前配置的派发方式路由
     void ParseMessages() {
         while (true) {
             size_t avail = recvBuffer_.size() - recvOffset_;
@@ -252,10 +250,10 @@ private:
             if (!msg) return;
             recvOffset_ += static_cast<size_t>(total);
 
-            // Compact recv buffer when more than half has been consumed.
+            // 已消费超过一半时压缩 recv 缓冲区
             if (recvOffset_ >= recvBuffer_.size() / 2) CompactRecvBuffer();
 
-            // C1 – Route heartbeat messages before user callback.
+            // C1 – 优先处理心跳消息，不进入用户回调
             if (msgId == kMsgHeartbeatPong) {
                 lastPingSentAtMs_ = 0;
                 heartbeatMissed_  = 0;
@@ -267,9 +265,9 @@ private:
                 continue;
             }
 
-            // Phase D – dispatch to MessageQueue / WorkerPool when configured.
+            // Phase D – 按配置的派发方式路由消息：WorkerPool 直发 / MessageQueue / 直接回调
             if (workerDispatchFn_ && workerPool_) {
-                // Direct submission to WorkerPool (bypasses global queue).
+                // 直接提交到 WorkerPool（绕过全局消息队列）
                 auto handle = GetConnHandle();
                 workerPool_->Submit([fn = workerDispatchFn_, handle, msg = std::move(msg)]() mutable {
                     fn(std::move(handle), std::move(msg));

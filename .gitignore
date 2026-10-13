@@ -67,9 +67,6 @@ temp/
 # thirdparty/doctest/ stays as-is
 
 # Cross-platform / IDE
-.clang-format
-.clang-tidy
-.editorconfig
 *.sublime-*
 .project
 .settings/

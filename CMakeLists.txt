@@ -60,6 +60,47 @@ add_subdirectory(libs/snc_gateway)
 # P3: Database adapter layer (abstract IDatabase + in-memory StubDatabase)
 add_subdirectory(libs/snc_db)
 
+# New modules for WebSocket, HTTP, Redis (enabled individually)
+option(SNC_ENABLE_WEBSOCKET "Build snc_websocket" OFF)
+option(SNC_ENABLE_HTTP      "Build snc_http"      OFF)
+option(SNC_ENABLE_REDIS     "Build snc_redis"     OFF)
+option(SNC_ENABLE_AUTH      "Build snc_auth"      OFF)
+option(SNC_ENABLE_ADMIN     "Build snc_admin"     OFF)
+
+if(SNC_ENABLE_REDIS)
+    add_subdirectory(libs/snc_redis)
+endif()
+if(SNC_ENABLE_WEBSOCKET)
+    add_subdirectory(libs/snc_websocket)
+endif()
+if(SNC_ENABLE_HTTP)
+    add_subdirectory(libs/snc_http)
+endif()
+if(SNC_ENABLE_AUTH)
+    add_subdirectory(libs/snc_auth)
+endif()
+if(SNC_ENABLE_ADMIN)
+    add_subdirectory(libs/snc_admin)
+endif()
+
+# ── MMORPG 模块（纯头文件，依赖上述可选模块）────────────────────
+option(SNC_BUILD_MMORPG "Build snc_mmorpg" ON)
+if(SNC_BUILD_MMORPG)
+    add_subdirectory(libs/snc_mmorpg)
+endif()
+
+# ── Examples ────────────────────────────────────────────────────
+option(SNC_BUILD_EXAMPLES "Build example programs" ON)
+if(SNC_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+# ── Tests ───────────────────────────────────────────────────────
+option(SNC_BUILD_TESTS "Build unit tests" ON)
+if(SNC_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
 # ── Tutorials ───────────────────────────────────────────────────
 # Tutorial documentation lives in docs/tutorials/
 
@@ -76,6 +117,18 @@ if(SNC_RPC_ENABLE_LUA)
 endif()
 if(SNC_ENABLE_MONITOR)
     list(APPEND _snc_install_targets snc_monitor)
+endif()
+if(SNC_ENABLE_WEBSOCKET)
+    list(APPEND _snc_install_targets snc_websocket)
+endif()
+if(SNC_ENABLE_HTTP)
+    list(APPEND _snc_install_targets snc_http)
+endif()
+if(SNC_ENABLE_AUTH)
+    list(APPEND _snc_install_targets snc_auth)
+endif()
+if(SNC_ENABLE_ADMIN)
+    list(APPEND _snc_install_targets snc_admin)
 endif()
 
 install(TARGETS ${_snc_install_targets}
@@ -115,10 +168,3 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/sncConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/snc
 )
-
-# ── Tests ───────────────────────────────────────────────────────
-option(SNC_BUILD_TESTS "Build unit tests (requires doctest)" ON)
-if(SNC_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()

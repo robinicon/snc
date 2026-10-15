@@ -1,5 +1,7 @@
 # Build output
 build/
+build-normal/
+build-mmo-legend/
 cmake-build-*/
 bin/
 lib/

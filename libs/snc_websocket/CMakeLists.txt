@@ -14,14 +14,7 @@ target_include_directories(snc_websocket
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/libs/snc_websocket/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(snc_websocket PUBLIC snc_base)
-
-if(MSVC)
-    target_compile_options(snc_websocket PRIVATE /W4 /WX- /utf-8)
-    target_compile_definitions(snc_websocket PRIVATE _CRT_SECURE_NO_WARNINGS)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(snc_websocket PRIVATE -Wall -Wextra -Wpedantic)
-endif()

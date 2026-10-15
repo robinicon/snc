@@ -88,5 +88,8 @@ using AuthPreHandler = std::function<bool(std::string&, std::unordered_map<std::
 /// 基于 JwtService 构建认证中间件；传入 nullptr token 则跳过校验
 AuthPreHandler MakeJwtMiddleware(JwtService& svc);
 
+/// SHA-256 哈希（十六进制字符串），供账号密码哈希等场景使用
+std::string HashSha256(const std::string& data);
+
 } // namespace auth
 } // namespace snc

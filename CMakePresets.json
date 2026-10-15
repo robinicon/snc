@@ -12,9 +12,11 @@
       }
     },
     {
-      "name": "minimal",
-      "displayName": "Minimal (core + rpc only)",
+      "name": "minimal-msvc",
+      "displayName": "Minimal (MSVC) — core + rpc only",
       "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "cacheVariables": {
         "SNC_BUILD_RPC": "ON",
         "SNC_RPC_ENABLE_LUA": "OFF",
@@ -24,9 +26,11 @@
       }
     },
     {
-      "name": "normal",
-      "displayName": "Normal (core + rpc + lua + monitor)",
+      "name": "normal-msvc",
+      "displayName": "Normal (MSVC) — core + rpc + lua + monitor",
       "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "cacheVariables": {
         "SNC_BUILD_RPC": "ON",
         "SNC_RPC_ENABLE_LUA": "ON",
@@ -36,9 +40,11 @@
       }
     },
     {
-      "name": "full",
-      "displayName": "Full (all features)",
+      "name": "full-msvc",
+      "displayName": "Full (MSVC) — all features",
       "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "cacheVariables": {
         "SNC_BUILD_RPC": "ON",
         "SNC_RPC_ENABLE_LUA": "ON",
@@ -48,9 +54,117 @@
       }
     },
     {
-      "name": "relwithdebinfo",
-      "displayName": "Release with Debug Info (default build)",
+      "name": "relwithdebinfo-msvc",
+      "displayName": "Release+DebugInfo (MSVC, default)",
       "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "minimal-ninja",
+      "displayName": "Minimal (Ninja) — core + rpc only",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "OFF",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "OFF"
+      }
+    },
+    {
+      "name": "normal-ninja",
+      "displayName": "Normal (Ninja) — core + rpc + lua + monitor",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "full-ninja",
+      "displayName": "Full (Ninja) — all features",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "ON",
+        "SNC_ENABLE_FLATBUFFERS": "ON",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "relwithdebinfo-ninja",
+      "displayName": "Release+DebugInfo (Ninja, default)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "minimal-makefiles",
+      "displayName": "Minimal (Unix Makefiles) — core + rpc only",
+      "inherits": "base",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "OFF",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "OFF"
+      }
+    },
+    {
+      "name": "normal-makefiles",
+      "displayName": "Normal (Unix Makefiles) — core + rpc + lua + monitor",
+      "inherits": "base",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "OFF",
+        "SNC_ENABLE_FLATBUFFERS": "OFF",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "full-makefiles",
+      "displayName": "Full (Unix Makefiles) — all features",
+      "inherits": "base",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "SNC_BUILD_RPC": "ON",
+        "SNC_RPC_ENABLE_LUA": "ON",
+        "SNC_ENABLE_PROTOBUF": "ON",
+        "SNC_ENABLE_FLATBUFFERS": "ON",
+        "SNC_ENABLE_MONITOR": "ON"
+      }
+    },
+    {
+      "name": "relwithdebinfo-makefiles",
+      "displayName": "Release+DebugInfo (Unix Makefiles, default)",
+      "inherits": "base",
+      "generator": "Unix Makefiles",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "SNC_BUILD_RPC": "ON",
@@ -62,9 +176,17 @@
     }
   ],
   "buildPresets": [
-    { "name": "minimal",              "configurePreset": "minimal" },
-    { "name": "normal",               "configurePreset": "normal" },
-    { "name": "full",                 "configurePreset": "full" },
-    { "name": "relwithdebinfo",       "configurePreset": "relwithdebinfo" }
+    { "name": "minimal-msvc",              "configurePreset": "minimal-msvc" },
+    { "name": "normal-msvc",              "configurePreset": "normal-msvc" },
+    { "name": "full-msvc",                "configurePreset": "full-msvc" },
+    { "name": "relwithdebinfo-msvc",      "configurePreset": "relwithdebinfo-msvc" },
+    { "name": "minimal-ninja",            "configurePreset": "minimal-ninja" },
+    { "name": "normal-ninja",             "configurePreset": "normal-ninja" },
+    { "name": "full-ninja",               "configurePreset": "full-ninja" },
+    { "name": "relwithdebinfo-ninja",     "configurePreset": "relwithdebinfo-ninja" },
+    { "name": "minimal-makefiles",        "configurePreset": "minimal-makefiles" },
+    { "name": "normal-makefiles",         "configurePreset": "normal-makefiles" },
+    { "name": "full-makefiles",           "configurePreset": "full-makefiles" },
+    { "name": "relwithdebinfo-makefiles", "configurePreset": "relwithdebinfo-makefiles" }
   ]
 }

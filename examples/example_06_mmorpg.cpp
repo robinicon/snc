@@ -15,7 +15,8 @@
 ///   4. WorldService 创建跨服场景
 ///   5. Master 查询全局服状态
 ///
-/// 启动：cmake --build . --target example_06_mmorpg && ./example_06_mmorpg
+/// 启动：cmake --build . --target example_06_mmorpg
+/// 可选端口参数：./example_06_mmorpg [account_port] [master_rpc] [master_admin] [game_rpc] [gate_tcp] [world_rpc]
 
 #include <iostream>
 #include <thread>
@@ -47,8 +48,35 @@ using namespace snc::discovery;
 using namespace snc::admin;
 using namespace snc::mmorpg;
 
+// ── 版本协议 ───────────────────────────────────────────────────────
+static constexpr uint16_t kServerProtocolVersion = 0x0201;  // v2.1
+static constexpr uint16_t kClientProtocolVersion = 0x0201;
+static constexpr int32_t  kMsgHandshake          = 0x0001;  // 客户端 → 服务端握手
+static constexpr int32_t  kMsgHandshakeResp      = 0x0002; // 服务端 → 客户端响应
+
 static std::atomic<bool> g_all_running{true};
 static void SignalHandler(int) { g_all_running = false; }
+
+// ── 端口配置（可通过命令行覆盖）──────────────────────────────────
+struct ServerPorts {
+    uint16_t account = 8080;
+    uint16_t master_rpc   = 9000;
+    uint16_t master_admin = 9001;
+    uint16_t game_rpc     = 8001;
+    uint16_t gate_tcp     = 7777;
+    uint16_t world_rpc    = 9100;
+};
+
+static ServerPorts ParsePorts_(int argc, char* argv[]) {
+    ServerPorts p;
+    if (argc > 1)  p.account  = static_cast<uint16_t>(std::stoi(argv[1]));
+    if (argc > 2)  p.master_rpc   = static_cast<uint16_t>(std::stoi(argv[2]));
+    if (argc > 3)  p.master_admin = static_cast<uint16_t>(std::stoi(argv[3]));
+    if (argc > 4)  p.game_rpc     = static_cast<uint16_t>(std::stoi(argv[4]));
+    if (argc > 5)  p.gate_tcp     = static_cast<uint16_t>(std::stoi(argv[5]));
+    if (argc > 6)  p.world_rpc    = static_cast<uint16_t>(std::stoi(argv[6]));
+    return p;
+}
 
 // ── 辅助：简易 JSON 输出 ──────────────────────────────────────────
 static std::string JsonObj(const std::initializer_list<std::pair<const char*, std::string>>& pairs) {
@@ -66,22 +94,30 @@ static std::string JsonObj(const std::initializer_list<std::pair<const char*, st
 
 // ── main ─────────────────────────────────────────────────────────
 int main(int argc, char* argv[]) {
-    (void)argc; (void)argv;
     std::signal(SIGINT,  SignalHandler);
     std::signal(SIGTERM, SignalHandler);
 
+    const ServerPorts p = ParsePorts_(argc, argv);
+    (void)p; // 端口通过各服务 lambda 捕获使用
+
     // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
-    const std::string SECRET = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥
-    JwtConfig jwt_cfg{SECRET, 7200, "snc-mmorpg", "HS256"};
+    const char* env_secret = std::getenv("SNC_JWT_SECRET");
+    std::string jwt_secret = (env_secret && env_secret[0])
+        ? env_secret
+        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
+    if (!env_secret) {
+        SNC_LOG_WARN("mmorpg", "Using default JWT secret — set SNC_JWT_SECRET in production");
+    }
+    JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};
 
     std::cout << "╔══════════════════════════════════════════════════════════╗" << std::endl;
     std::cout << "║         SNC MMORPG 多服联合启动示例                      ║" << std::endl;
     std::cout << "╠══════════════════════════════════════════════════════════╣" << std::endl;
-    std::cout << "║  Account  : HTTP 8080  (注册/登录/JWT)                   ║" << std::endl;
-    std::cout << "║  Master   : RPC  9000  Admin 9001 (服务管理/GM)          ║" << std::endl;
-    std::cout << "║  Game     : RPC  8001  (游戏逻辑/地图/Actor)             ║" << std::endl;
-    std::cout << "║  Gate     : TCP  7777  (客户端接入/消息路由)             ║" << std::endl;
-    std::cout << "║  World    : RPC  9100  (跨服场景管理)                    ║" << std::endl;
+    std::cout << "║  Account  : HTTP " << p.account  << "  (注册/登录/JWT)                    ║" << std::endl;
+    std::cout << "║  Master   : RPC  " << p.master_rpc   << "  Admin " << p.master_admin << " (服务管理/GM)     ║" << std::endl;
+    std::cout << "║  Game     : RPC  " << p.game_rpc << "  (游戏逻辑/地图/Actor)      ║" << std::endl;
+    std::cout << "║  Gate     : TCP  " << p.gate_tcp << "  (客户端接入/消息路由)      ║" << std::endl;
+    std::cout << "║  World    : RPC  " << p.world_rpc << "  (跨服场景管理)              ║" << std::endl;
     std::cout << "╚══════════════════════════════════════════════════════════╝" << std::endl;
 
     // ── 1. AccountService ──────────────────────────────────────
@@ -93,13 +129,11 @@ int main(int argc, char* argv[]) {
     account_svc.RegisterRoutes(account_server.Routes());
 
     std::thread account_thread([&]() {
-        account_server.Listen(8080);
+        account_server.Listen(p.account);
         account_server.Run();
     });
-    // ⚠️ 此为演示代码：detach 后线程脱离管理，主进程退出时可能访问已析构资源
-    // 生产环境请使用 joinable() + 优雅停机信号量同步等待
     account_thread.detach();
-    std::cout << "      ✓ HTTP ://localhost:8080" << std::endl;
+    std::cout << "      ✓ HTTP ://localhost:" << p.account << std::endl;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
@@ -110,17 +144,16 @@ int main(int argc, char* argv[]) {
         req.method = HttpMethod::HTTP_POST;
         req.path   = "/api/auth/register";
         req.body   = "{\"username\":\"player1\",\"password\":\"test123\"}";
-        // 注：实际通过 HTTP 客户端调用，此处直接在内存中测试注册逻辑
         auto r = account_db->Execute("INSERT INTO accounts (id, username, password_hash) VALUES (1, 'player1', 'test123')");
         std::cout << "      ✓ 账号创建完成 (id=1, username=player1)" << std::endl;
 
-        // 签发 JWT
         std::unordered_map<std::string, std::string> claims;
         claims["sub"] = "1";
         claims["username"] = "player1";
         claims["role"] = "player";
+        claims["ver"] = std::to_string(kServerProtocolVersion);
         std::string token = account_svc.JwtService().Sign(claims);
-        std::cout << "      ✓ JWT 签发成功（展示前20字符）: "
+        std::cout << "      ✓ JWT 签发成功（含版本 " << kServerProtocolVersion << "）: "
                   << token.substr(0, 20) << "..." << std::endl;
     }
 
@@ -135,29 +168,27 @@ int main(int argc, char* argv[]) {
         return HttpResponse::Json(200, master_svc->QueryServiceStatus());
     });
     std::thread master_thread([&]() {
-        master_admin.Listen(9001);
+        master_admin.Listen(p.master_admin);
         master_admin.Run();
     });
-    // ⚠️ 此为演示代码：detach 后线程脱离管理
     master_thread.detach();
-    std::cout << "      ✓ Admin HTTP ://localhost:9001" << std::endl;
+    std::cout << "      ✓ Admin HTTP ://localhost:" << p.master_admin << std::endl;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     // ── 4. GameService ─────────────────────────────────────────
     std::cout << "\n[4/5] 启动 GameService..." << std::endl;
     auto game_registry = ServiceRegistry::Create();
-    game_registry->Register("game", "127.0.0.1", 8001, 1);
+    game_registry->Register("game", "127.0.0.1", p.game_rpc, 1);
     auto game_master_rpc = std::make_shared<RpcClient>(
         std::make_shared<RpcSession>(nullptr));
     GameService game_svc(game_master_rpc, game_registry, jwt_cfg);
     game_svc.InitMaps();
     std::thread game_thread([&]() {
-        game_svc.Start(8001, "game_01");
+        game_svc.Start(p.game_rpc, "game_01");
     });
-    // ⚠️ 此为演示代码：detach 后线程脱离管理
     game_thread.detach();
-    std::cout << "      ✓ RPC  ://127.0.0.1:8001" << std::endl;
+    std::cout << "      ✓ RPC  ://127.0.0.1:" << p.game_rpc << std::endl;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
@@ -168,11 +199,10 @@ int main(int argc, char* argv[]) {
         std::make_shared<RpcSession>(nullptr));
     WorldService world_svc(world_master_rpc, world_registry);
     std::thread world_thread([&]() {
-        world_svc.Start(9100);
+        world_svc.Start(p.world_rpc);
     });
-    // ⚠️ 此为演示代码：detach 后线程脱离管理
     world_thread.detach();
-    std::cout << "      ✓ RPC  ://127.0.0.1:9100" << std::endl;
+    std::cout << "      ✓ RPC  ://127.0.0.1:" << p.world_rpc << std::endl;
 
     std::cout << "\n──────────────────────────────────────────────────────────" << std::endl;
     std::cout << "所有服务已启动。演示跨服场景创建..." << std::endl;
@@ -188,18 +218,24 @@ int main(int argc, char* argv[]) {
     world_svc.EndScene(scene_id);
     std::cout << "  场景结束: id=" << scene_id << "  state=ENDING→IDLE" << std::endl;
 
+    // ── 版本握手提示 ───────────────────────────────────────────
+    std::cout << "\n  [版本协议] 服务端协议版本: 0x" << std::hex << kServerProtocolVersion << std::dec
+              << "  客户端需保持一致，否则返回 ERR_VERSION_MISMATCH" << std::endl;
+
     // ── 保持运行 ───────────────────────────────────────────────
     std::cout << "\n──────────────────────────────────────────────────────────" << std::endl;
     std::cout << "服务运行中... (Ctrl+C 优雅停机)" << std::endl;
-    std::cout << "  Account : POST http://localhost:8080/api/auth/login" << std::endl;
-    std::cout << "  Master  : GET  http://localhost:9001/api/admin/services" << std::endl;
+    std::cout << "  Account : POST http://localhost:" << p.account << "/api/auth/login" << std::endl;
+    std::cout << "  Master  : GET  http://localhost:" << p.master_admin << "/api/admin/services" << std::endl;
     std::cout << "──────────────────────────────────────────────────────────" << std::endl;
 
     while (g_all_running.load()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    std::cout << "\n正在优雅停机..." << std::endl;
+    std::cout << "\n收到停机信号，正在优雅停机..." << std::endl;
+    // 各服务的 Stop() 由析构顺序保证（栈上对象先于线程 detach）
+    // detach 的线程会在主进程退出时终止
     std::cout << "✓ 所有服务已停止。" << std::endl;
     return 0;
 }

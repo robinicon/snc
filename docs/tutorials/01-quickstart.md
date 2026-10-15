@@ -17,18 +17,18 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release    # Linux
 
 ## 最小编译配置
 
-`CMakePresets.json` 提供四个预设：
+`CMakePresets.json` 提供多个预设（平台后缀 `-msvc` / `-ninja` / `-makefiles`）：
 
-| Preset   | 说明                          |
+| Preset（以 MSVC 为例）| 说明                          |
 |----------|-------------------------------|
-| `minimal` | `snc_base` + `snc_core` + `snc_rpc` |
-| `normal`  | Minimal + Lua + Monitor       |
-| `full`    | 全部功能（Lua、Protobuf、FlatBuffers） |
-| `relwithdebinfo` | Release 含调试信息（默认）    |
+| `minimal-msvc` | `snc_base` + `snc_core` + `snc_rpc` |
+| `normal-msvc`  | Minimal + Lua + Monitor       |
+| `full-msvc`    | 全部功能（Lua、Protobuf、FlatBuffers） |
+| `relwithdebinfo-msvc` | Release 含调试信息（默认）    |
 
 ```bash
-cmake --preset=minimal
-cmake --build --preset=minimal --config Debug
+cmake --preset=minimal-msvc
+cmake --build --preset=minimal-msvc --config Debug
 ```
 
 ## 构建第一个 TCP 服务器

@@ -1,14 +1,14 @@
 /// @file example_03_game.cpp
-/// @brief 示例 03 — Game 服（游戏逻辑 + Actor 管理 + 地图 + 优雅停机）
+/// @brief 示例 03 — Game 服（传奇版）
 ///
 /// 功能：
 ///   - 注册到 Master 服（RPC 0x3000 心跳）
 ///   - 接受 Gate 转发的消息（RPC 0x2000 起始）
-///   - 玩家 Actor：登录、移动、广播
-///   - MapManager：创建地图、广播、传送
+///   - 传奇版 PlayerActor：职业/背包/装备/技能/PK/行会
+///   - SceneMgr / MonsterManager / CombatSystem / DropManager
 ///   - 优雅停机：SIGTERM → 等待玩家退出 → 注销
 ///
-/// 启动：cmake --build . --target example_03_game && ./example_03_game [rpc_port] [master_host] [master_port]
+/// 启动：cmake --build . --target example_03_game && .\example_03_game.exe <rpc_port> [master_host] [master_port]
 
 #include <iostream>
 #include <string>
@@ -26,18 +26,15 @@
 #include "snc/core/DisconnectReason.h"
 #include "snc/auth/AuthService.h"
 #include "snc/base/Log.h"
-#include "snc/mmorpg/GameService.h"
-#include "snc/mmorpg/MapManager.h"
+#include "snc/mmorpg/legend/GameService.h"
+#include "snc/mmorpg/legend/PlayerActor.h"
 
 using namespace snc;
 using namespace snc::rpc;
 using namespace snc::discovery;
 using namespace snc::core;
 using namespace snc::mmorpg;
-
-// ── 简易 TCP 服务器包装（演示用）────────────────────────────────
-// 生产代码应使用 snc::core::Acceptor + EventLoop；此处仅展示示例结构。
-#include "snc/core/IEventLoop.h"
+using namespace snc::mmorpg::legend;
 
 static std::atomic<bool> g_running{true};
 static void SignalHandler(int) { g_running = false; }
@@ -60,14 +57,7 @@ int main(int argc, char* argv[]) {
 
     auto registry = ServiceRegistry::Create();
     auto master_rpc = std::make_shared<RpcClient>(
-        std::make_shared<RpcSession>(nullptr));  // 临时，将在连接建立后设置
-
-    // 连接 Master 服
-    auto master_conn_factory = [&]() -> IConnection::Ptr {
-        // 简化：此处演示目的，不实际建立连接
-        return nullptr;
-    };
-    (void)master_conn_factory;
+        std::make_shared<RpcSession>(nullptr));
 
     GameService svc(master_rpc, registry, auth::JwtConfig{});
 
@@ -78,8 +68,12 @@ int main(int argc, char* argv[]) {
     std::cout << "  RPC 0x2100 — 向 Gate 发送响应" << std::endl;
     std::cout << "Press Ctrl+C for graceful shutdown." << std::endl;
 
-    // 初始化地图
-    svc.InitMaps();
+    // 初始化所有子系统（场景/NPC/怪物/掉落/行会/世界频道）
+    svc.Init();
+
+    // 创建一个测试玩家（模拟登录）
+    auto player = svc.CreatePlayer(1, "TestWarrior", ClassType::WARRIOR, nullptr);
+    (void)player;
 
     // 启动 Game 服
     svc.Start(rpc_port, "game_01");
@@ -88,7 +82,6 @@ int main(int argc, char* argv[]) {
     while (g_running.load()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "\r[Game] online players: " << svc.OnlinePlayerCount()
-                  << "   maps loaded: " << svc.GetMapManager()->TotalPlayerCount()
                   << std::flush;
     }
 

@@ -39,12 +39,24 @@ public:
         db_->Connect("stub://");
     }
 
+    // ── SQL 字符串转义（防止注入）─────────────────────────────────
+    static std::string EscapeSql_(const std::string& s) {
+        std::string out;
+        out.reserve(s.size() + 8);
+        for (char c : s) {
+            if (c == '\'')  { out += "''"; }
+            else if (c == '\\') { out += "\\\\"; }
+            else { out += c; }
+        }
+        return out;
+    }
+
     /// 注册：username 已存在返回 false；成功返回 user_id（字符串形式）。
     bool Register(const std::string& username, const std::string& password,
                   std::string& out_user_id) {
         std::lock_guard<std::mutex> lk(mtx_);
         // 检查是否存在
-        auto r = db_->Query("SELECT * FROM accounts WHERE username = '" + username + "'");
+        auto r = db_->Query("SELECT * FROM accounts WHERE username = '" + EscapeSql_(username) + "'");
         if (r.ok && !r.rows.empty()) return false;
 
         // 生成简单 user_id（实际应使用 UUID）
@@ -54,7 +66,7 @@ public:
 
         // 写入数据库
         db_->Execute("INSERT INTO accounts (id, username, password_hash) VALUES ("
-                     + std::to_string(id) + ", '" + username + "', '" + HashPw(password) + "')");
+                     + std::to_string(id) + ", '" + EscapeSql_(username) + "', '" + HashPw(password) + "')");
         return true;
     }
 
@@ -83,10 +95,8 @@ private:
     };
 
     static std::string HashPw(const std::string& pw) {
-        // 演示用途：简易哈希（生产用 bcrypt/argon2）
-        std::string h = pw;
-        for (auto& c : h) c = static_cast<char>(c ^ 0x5A);
-        return h;
+        // SHA-256 哈希（生产环境建议使用 bcrypt/argon2）
+        return snc::auth::HashSha256(pw);
     }
 
     mutable std::mutex mtx_;
@@ -101,9 +111,14 @@ int main(int argc, char* argv[]) {
 
     // JWT 配置（Gate 服复用同一密钥进行本地验签）
     // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
-    JwtConfig jwt_cfg;
-    jwt_cfg.secret = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥，仅用于演示
-    jwt_cfg.expireSecs = 7200;  // 2 小时
+    const char* env_secret = std::getenv("SNC_JWT_SECRET");
+    std::string jwt_secret = (env_secret && env_secret[0])
+        ? env_secret
+        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
+    if (!env_secret) {
+        SNC_LOG_WARN("account", "Using default JWT secret — set SNC_JWT_SECRET in production");
+    }
+    JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};
     JwtService jwt_svc(jwt_cfg);
 
     AccountStore store;

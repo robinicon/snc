@@ -17,10 +17,3 @@ target_include_directories(snc_rpc
 
 target_link_libraries(snc_rpc PUBLIC snc_core)
 
-if(MSVC)
-    target_compile_options(snc_rpc PRIVATE /W4 /WX- /utf-8)
-    target_compile_definitions(snc_rpc PRIVATE _CRT_SECURE_NO_WARNINGS)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(snc_rpc PRIVATE -Wall -Wextra)
-endif()
-

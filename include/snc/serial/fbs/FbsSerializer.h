@@ -5,6 +5,7 @@
 #ifdef SNC_ENABLE_FLATBUFFERS
 #include <flatbuffers/flatbuffers.h>
 #else
+#pragma message("snc_serial_fbs: FlatBuffers disabled — stub mode (all operations return SER_FAILED)")
 // Stub: no-op types for compile-only compatibility
 namespace flatbuffers {
 class FlatBufferBuilder {};

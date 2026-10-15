@@ -102,8 +102,11 @@ int main(int argc, char* argv[]) {
 
     // ── HTTP Admin 服务器 ─────────────────────────────────────────
     // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥
-    JwtConfig jwt_cfg;
-    jwt_cfg.secret = "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";  // 示例密钥，仅用于演示
+    const char* env_secret = std::getenv("SNC_JWT_SECRET");
+    std::string jwt_secret = (env_secret && env_secret[0])
+        ? env_secret
+        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
+    JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};
     JwtService jwt_svc(jwt_cfg);
 
     HttpServer admin_server;

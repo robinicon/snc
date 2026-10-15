@@ -1,0 +1,112 @@
+# Doxyfile for SNC project
+# Generated for SNC v1.0.1 — doxygen 1.9.x compatible
+
+PROJECT_NAME           = "SNC"
+PROJECT_BRIEF          = "Lightweight C++17 game server networking framework"
+PROJECT_NUMBER         = 1.0.1
+OUTPUT_DIRECTORY       = docs/api
+CREATE_SUBDIRS         = YES
+ALLOW_UNICODE_NAMES    = NO
+
+# Input
+INPUT                  = include src libs examples
+RECURSIVE              = YES
+EXCLUDE                = thirdparty build-* mmo/src mmo/tests
+EXCLUDE_PATTERNS       = *.pb.cc *.fbs_generated.h
+EXCLUDE_SYMBOLS        = internal_ detail_ _impl_ detail::snc_internal_*
+
+# Output
+OUTPUT_LANGUAGE        = English
+HTML_OUTPUT            = html
+HTML_EXTRA_STYLESHEET  =
+ALPHABETICAL_INDEX     = YES
+GENERATE_TREEVIEW      = YES
+GENERATE_HTMLHELP      = NO
+GENERATE_QHP           = NO
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+XML_OUTPUT             = xml
+XML_PROGRAMLISTING     = YES
+ENABLED_SECTIONS       =
+
+# Preprocessor
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = NO
+PREDEFINED             =
+SKIP_FUNCTION_MACROS   = NO
+
+# Cross-reference
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+VERBATIM_HEADERS       = NO
+ALIASES                =
+QDOC_SOURCE_LINES      = YES
+
+# Graph settings
+DOT_IMAGE_FORMAT       = png
+DOT_TRANSPARENT        = YES
+DOT_PATH               =
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+GROUP_GRAPHS           = YES
+UML_LOOK               = NO
+UML_LIMIT              = 0
+TREE_WIDTH             = 200
+
+# Search
+SEARCHENGINE           = YES
+SERVER_BASED_SEARCH    = NO
+EXTERNAL_SEARCH        = NO
+
+# Layout
+LAYOUT_FILE            =
+BUILTIN_STL_SUPPORT    = NO
+CPP_CLI_SUPPORT        = NO
+QT_AUTOBRIEF           = NO
+INHERIT_DOCS           = YES
+TAB_SIZE               = 4
+
+# Miscellaneous
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_FORMAT            = "$file:$line: $text"
+WARN_LOGFILE           =
+INPUT_FILTER           =
+FILTER_PATTERNS        =
+FILTER_SOURCE_FILES    = NO
+FILTER_SOURCE_PATTERNS =
+SHOW_INCLUDE_FILES     = YES
+INLINE_INFO            = YES
+SORT_MEMBER_DOCS       = YES
+SORT_BRIEF_DOCS        = NO
+SORT_BY_SCOPE_NAME     = NO
+STRICT_PROTO_MATCHING  = NO
+GENERATE_TODOLIST      = YES
+GENERATE_TESTLIST      = YES
+GENERATE_BUGLIST       = YES
+GENERATE_DEPRECATEDLIST= YES
+MAX_INITIALIZER_LINES  = 30
+SHOW_USED_FILES        = YES
+SHOW_FILES             = YES
+SHOW_NAMESPACES        = YES
+OPTIMIZE_OUTPUT_FOR_C  = NO
+OPTIMIZE_OUTPUT_JAVA   = NO
+OPTIMIZE_FOR_FORTRAN   = NO
+OPTIMIZE_OUTPUT_VHDL  = NO
+EXTENSION_MAPPING      =
+MARKDOWN_ID_STYLE      = GITHUB
+MARKDOWN_LINEBREAK     = NO
+
+# Cross-reference graphs
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+GROUP_GRAPHS           = YES
+DIAGRAM_BITMAP_FORMAT  = png

@@ -4,6 +4,7 @@
 #include <cstdarg>
 #include <string>
 #include <mutex>
+#include <thread>
 #include "snc/base/Common.h"
 
 namespace snc {
@@ -33,6 +34,18 @@ inline const char* LogLevelToStr(LogLevel level) {
     }
 }
 
+// ── Trace ID ────────────────────────────────────────────────────
+/// Thread-local trace ID. Set via SetTraceId() to correlate log lines across calls.
+inline void SetTraceId(const std::string& id) {
+    thread_local std::string trace_id;
+    trace_id = id;
+}
+
+inline std::string GetTraceId() {
+    thread_local std::string trace_id;
+    return trace_id;
+}
+
 /// 日志写入器（单例，线程安全）。
 /// 使用 pthread/CRITICAL_SECTION 风格的简单互斥锁保证写入不交错。
 /// 日志格式：[TIME] [LEVEL] [TAG] message\n
@@ -60,7 +73,9 @@ public:
 
         va_list args;
         va_start(args, fmt);
-        fprintf(file_, "[%s] [%s] ", LogLevelToStr(level), tag);
+        std::string tid = GetTraceId();
+        fprintf(file_, "[%s] [%s] [%s] ", tid.empty() ? "0" : tid.c_str(),
+                LogLevelToStr(level), tag);
         vfprintf(file_, fmt, args);
         fprintf(file_, "\n");
         fflush(file_);

@@ -1,0 +1,49 @@
+name: .clang-tidy
+Checks: >
+  -bugprone-*
+  -cert-*.cppcoreguidelines-*
+  -clang-analyzer-*
+  -google-*
+  -hicpp-*
+  -llvm-*
+  -llvm-header-guard
+  -llvmlibc-callee-namespace
+  -llvmlibc-restrict-system-libc-headers
+  -misc-*
+  -modernize-use-trailing-return-type
+  -modernize-use-default-member-init
+  -modernize-use-emplace
+  -modernize-use-equals-default
+  -modernize-use-override
+  -performance-unnecessary-value-param
+  -readability-braces-around-statements
+  -readability-isolate-declaration
+  -readability-const-return-type
+  -readability-non-const-parameter
+  -readability-simplify-boolean-expr
+  -readability-container-size-empty
+  +bugprone-easily-swappable-parameters
+  +bugprone-macro-repeated-side-effects
+  +bugprone-incorrect-roundings
+  +cppcoreguidelines-pro-type-cstyle-cast
+  +cppcoreguidelines-pro-type-reinterpret-cast
+  +cppcoreguidelines-pro-type-union-access
+  +cppcoreguidelines-misc-unused-alias-decls
+  +cppcoreguidelines-misc-unused-parameters
+  +cppcoreguidelines-misc-const-correctness
+  +cppcoreguidelines-prefer-member-initializer
+
+FormatStyle: file
+HeaderFilterRegex: ''
+WarningsAsErrors: '*'
+CheckOptions:
+  - key:            readability-simplify-boolean-expr.BooleanNaming
+    value:          '1'
+  - key:            cppcoreguidelines-pro-type-cstyle-cast.ConditionalCastToBool
+    value:          'false'
+  - key:            cppcoreguidelines-pro-type-member-init.InitConstructorsForCppMembers
+    value:          'true'
+  - key:            hicpp-special-member-functions.SpecialMemberFunctions
+    value:          '1'
+  - key:            modernize-use-equals-default.IgnoreMacros
+    value:          'false'

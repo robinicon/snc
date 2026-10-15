@@ -5,6 +5,7 @@
 #ifdef SNC_ENABLE_PROTOBUF
 #include <google/protobuf/message.h>
 #else
+#pragma message("snc_serial_pb: Protobuf disabled — stub mode (all operations return SER_FAILED)")
 namespace google { namespace protobuf { class Message; } }
 #endif
 

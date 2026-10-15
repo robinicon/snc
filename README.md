@@ -117,9 +117,9 @@ cmake --build --preset=full
 | `SNC_ENABLE_FLATBUFFERS` | OFF | 启用 FlatBuffers 序列化 |
 | `SNC_ENABLE_MONITOR` | ON | 启用运行时监控 |
 | `SNC_ENABLE_SANITIZER` | OFF | 启用 AddressSanitizer（Debug 模式） |
-| `SNC_ENABLE_HTTP` | OFF | 启用 HTTP 服务器模块 |
-| `SNC_ENABLE_AUTH` | OFF | 启用 JWT 认证模块 |
-| `SNC_ENABLE_ADMIN` | OFF | 启用 Admin API 模块 |
+| `SNC_ENABLE_HTTP` | ON | 启用 HTTP 服务器模块 |
+| `SNC_ENABLE_AUTH` | ON | 启用 JWT 认证模块 |
+| `SNC_ENABLE_ADMIN` | ON | 启用 Admin API 模块 |
 | `SNC_ENABLE_WEBSOCKET` | OFF | 启用 WebSocket 网关模块 |
 | `SNC_REDIS_CLIENT` | OFF | 启用 hiredis Redis 后端（默认：内存 stub） |
 

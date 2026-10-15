@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(snc
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "Lightweight C++17 game server networking framework for microservices"
     LANGUAGES CXX)
 
@@ -65,10 +65,10 @@ add_subdirectory(libs/snc_db)
 
 # New modules for WebSocket, HTTP, Redis (enabled individually)
 option(SNC_ENABLE_WEBSOCKET "Build snc_websocket" OFF)
-option(SNC_ENABLE_HTTP      "Build snc_http"      OFF)
+option(SNC_ENABLE_HTTP      "Build snc_http"      ON)
 option(SNC_ENABLE_REDIS     "Build snc_redis"     OFF)
-option(SNC_ENABLE_AUTH      "Build snc_auth"      OFF)
-option(SNC_ENABLE_ADMIN     "Build snc_admin"     OFF)
+option(SNC_ENABLE_AUTH      "Build snc_auth"      ON)
+option(SNC_ENABLE_ADMIN     "Build snc_admin"     ON)
 
 if(SNC_ENABLE_REDIS)
     add_subdirectory(libs/snc_redis)
@@ -90,6 +90,12 @@ endif()
 option(SNC_BUILD_MMORPG "Build snc_mmorpg" ON)
 if(SNC_BUILD_MMORPG)
     add_subdirectory(libs/snc_mmorpg)
+endif()
+
+# ── Legend MMO 子项目（mmo/）────────────────────────────────────
+option(SNC_BUILD_MMO_LEGEND "Build Legend MMO submodule" ON)
+if(SNC_BUILD_MMO_LEGEND)
+    add_subdirectory(mmo)
 endif()
 
 # ── Examples ────────────────────────────────────────────────────

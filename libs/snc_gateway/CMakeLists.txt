@@ -11,9 +11,3 @@ target_include_directories(snc_gateway
 )
 
 target_link_libraries(snc_gateway INTERFACE snc_discovery snc_circuit snc_rpc snc_base)
-
-if(MSVC)
-    target_compile_options(snc_gateway INTERFACE /W4 /utf-8)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(snc_gateway INTERFACE -Wall -Wextra)
-endif()

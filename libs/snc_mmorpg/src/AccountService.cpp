@@ -7,35 +7,42 @@
 #include "snc/db/Database.h"
 #include "snc/base/Log.h"
 
-#include <sstream>
 #include <algorithm>
 
 namespace snc {
 namespace mmorpg {
+
+// ── SQL 字符串转义（防止注入）─────────────────────────────────
+static std::string EscapeSql_(const std::string& s) {
+    std::string out;
+    out.reserve(s.size() + 8);
+    for (char c : s) {
+        if (c == '\'')  { out += "''"; }
+        else if (c == '\\') { out += "\\\\"; }
+        else { out += c; }
+    }
+    return out;
+}
 
 void AccountService::InitTables_() {
     db_->Execute("CREATE TABLE IF NOT EXISTS accounts (id INT PRIMARY KEY, username TEXT, password_hash TEXT)");
 }
 
 bool AccountService::CheckUserExists_(const std::string& username) {
-    auto result = db_->Query("SELECT id FROM accounts WHERE username='" + username + "'");
+    auto result = db_->Query("SELECT id FROM accounts WHERE username='" + EscapeSql_(username) + "'");
     return !result.rows.empty();
 }
 
 std::string AccountService::HashPassword_(const std::string& pwd) const {
-    uint32_t h = 0x811c9dc5;
-    for (char c : pwd) { h ^= c; h *= 0x01000193; }
-    std::ostringstream oss;
-    oss << std::hex << h;
-    return oss.str();
+    return auth::HashSha256(pwd);
 }
 
 bool AccountService::Register(const RegisterReq& req, std::string& out_user_id) {
     if (CheckUserExists_(req.username)) return false;
     std::string hash = HashPassword_(req.password);
     db_->Execute("INSERT INTO accounts (id, username, password_hash) VALUES (NULL, '"
-                 + req.username + "', '" + hash + "')");
-    auto result = db_->Query("SELECT id FROM accounts WHERE username='" + req.username + "'");
+                 + EscapeSql_(req.username) + "', '" + hash + "')");
+    auto result = db_->Query("SELECT id FROM accounts WHERE username='" + EscapeSql_(req.username) + "'");
     out_user_id = result.rows.empty() ? "0" : result.rows[0]["id"].ToString();
     SNC_LOG_INFO("account", "Registered user=%s id=%s", req.username.c_str(), out_user_id.c_str());
     return true;
@@ -44,7 +51,7 @@ bool AccountService::Register(const RegisterReq& req, std::string& out_user_id) 
 LoginResp AccountService::Login(const LoginReq& req) {
     LoginResp resp;
     auto result = db_->Query("SELECT id, password_hash FROM accounts WHERE username='"
-                             + req.username + "'");
+                             + EscapeSql_(req.username) + "'");
     if (result.rows.empty()) { resp.error = "user_not_found"; return resp; }
     std::string stored_hash = result.rows[0]["password_hash"].str_val;
     std::string calc_hash   = HashPassword_(req.password);

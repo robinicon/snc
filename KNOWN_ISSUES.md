@@ -5,7 +5,7 @@ This document tracks known issues and limitations in the SNC framework.
 ## Platform Limitations
 
 ### macOS
-- ~~kqueue backend not implemented~~ → **Fixed**: kqueue backend is now implemented and fully supported.
+- kqueue backend is now implemented and fully supported.
 
 ## Library Limitations
 
@@ -51,6 +51,5 @@ This document tracks known issues and limitations in the SNC framework.
 
 ## Debug vs Release
 
-- ASan (`SNC_ENABLE_SANITIZER=ON`) is Linux-only.
-- Gateway tests may crash in Debug mode on Windows due to ASan instrumentation; Release mode is stable.
+- ASan (`SNC_ENABLE_SANITIZER=ON`) 在 Linux/macOS 上支持完整；Windows 上部分测试可能因 ASan 注入导致 Gateway 相关测试不稳定，建议 Windows Debug 构建时关闭 ASan。
 - Use `-DSNC_ENABLE_SANITIZER=OFF` for Windows Debug builds if crashes occur.

@@ -35,7 +35,7 @@
 #include "snc/rpc/RpcSession.h"
 #include "snc/core/IConnection.h"
 #include "snc/core/Msg.h"
-#include "snc/admin/AdminService.h"
+#include "snc/http/HttpServer.h"
 #include "snc/auth/AuthService.h"
 #include "snc/base/Log.h"
 

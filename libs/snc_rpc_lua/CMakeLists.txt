@@ -71,12 +71,6 @@ if(LUA_LIBRARY AND LUA_INCLUDE_DIR)
         LUA_LIB
         LUA_CORE
     )
-    if(MSVC)
-        target_compile_options(snc_rpc_lua PRIVATE /W4 /WX- /utf-8)
-        target_compile_definitions(snc_rpc_lua PRIVATE _CRT_SECURE_NO_WARNINGS)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(snc_rpc_lua PRIVATE -Wall -Wextra)
-    endif()
     # Link the Lua library
     target_link_libraries(snc_rpc_lua PRIVATE ${LUA_LIBRARY})
     if(LUA_LIBRARY MATCHES "luajit")
@@ -96,11 +90,5 @@ else()
             $<INSTALL_INTERFACE:include>
     )
     target_link_libraries(snc_rpc_lua PUBLIC snc_rpc)
-    if(MSVC)
-        target_compile_options(snc_rpc_lua PRIVATE /W4 /WX- /utf-8)
-        target_compile_definitions(snc_rpc_lua PRIVATE _CRT_SECURE_NO_WARNINGS)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(snc_rpc_lua PRIVATE -Wall -Wextra)
-    endif()
 endif()
 

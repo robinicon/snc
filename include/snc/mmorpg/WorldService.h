@@ -90,6 +90,19 @@ public:
     /// 获取所有场景列表。
     std::vector<std::string> ListScenes() const;
 
+    /// 创建跨服场景（多 Game 服参与同一场景）。
+    /// 向每个参与的 Game 服发送 MSG_SCENE_BEGIN 事件。
+    /// @param gameServerIds 参与此场景的 Game 服 ID 列表
+    /// @return sceneId，失败返回 -1
+    int32_t CreateCrossScene(const std::string& sceneName,
+                             const std::vector<int32_t>& gameServerIds);
+
+    /// Game 服掉线时调用，标记该服玩家离线并继续场景至结束。
+    void OnGameServerDisconnected(int32_t gameServerId, int32_t sceneId);
+
+    /// 结束跨服场景，向所有参与 Game 服发送 MSG_SCENE_END。
+    bool EndCrossScene(int32_t sceneId);
+
     /// 注册 RPC 处理器（在 RpcServer 上调用）。
     void RegisterRpcHandlers(rpc::RpcServer& rpcServer);
 
@@ -103,6 +116,14 @@ private:
     // ── 状态转换辅助 ───────────────────────────────────────────
     bool Transition_(int32_t sceneId, SceneState from, SceneState to);
     void NotifyMaster_(int32_t sceneId, SceneState newState);
+    void NotifyGameServers_(int32_t sceneId, SceneState newState,
+                            const std::vector<int32_t>& gameIds);
+
+    // ── 跨服场景路由 ───────────────────────────────────────────
+    // sceneId -> (gameServerId -> RpcClient)
+    std::unordered_map<int32_t, std::unordered_map<int32_t, rpc::RpcClient::Ptr>>
+        cross_scene_clients_;
+    mutable std::mutex cross_mtx_;
 
     rpc::RpcClient::Ptr             master_rpc_;
     discovery::ServiceRegistry::Ptr registry_;

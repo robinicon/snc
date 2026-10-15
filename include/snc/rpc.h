@@ -6,4 +6,3 @@
 #include "snc/rpc/RpcServer.h"
 #include "snc/rpc/RpcClient.h"
 #include "snc/rpc/RpcServiceNode.h"
-#include "snc/rpc/MsgRouter.h"

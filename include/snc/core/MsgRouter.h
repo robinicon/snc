@@ -12,7 +12,7 @@ namespace core {
 
 using Handler = std::function<void(IConnection::Ptr, Msg::Ptr)>;
 
-class MsgRouterCpp {
+class MsgRouter {
 public:
     void RegisterHandler(int msgId, Handler handler) {
         std::lock_guard<std::mutex> lk(mtx_);

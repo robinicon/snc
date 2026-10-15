@@ -13,9 +13,15 @@ namespace auth {
 // ── JwtService ──────────────────────────────────────────────────
 
 JwtService::JwtService(const JwtConfig& config) : config_(config) {
-    // HS256 requires a key of at least 32 bytes. Warn on short keys.
+    // HS256 requires a key of at least 16 bytes for reasonable security.
+    // Reject shorter keys outright to prevent trivially weak tokens.
+    if (config.secret.size() < 16) {
+        throw std::invalid_argument(
+            "JWT secret must be at least 16 bytes (got " +
+            std::to_string(config.secret.size()) + ")");
+    }
     if (config.secret.size() < 32) {
-        SNC_LOG_WARN("auth", "JWT secret is only %zu bytes (minimum 32 recommended for HS256)",
+        SNC_LOG_WARN("auth", "JWT secret is only %zu bytes (32+ bytes recommended for HS256)",
                      config.secret.size());
     }
 }
@@ -66,20 +72,127 @@ std::string JwtService::Base64UrlDecode(const std::string& input) {
     return result;
 }
 
-// ── SHA-256 / HMAC ──────────────────────────────────────────────
-// TODO: 待后续补齐正确的 SHA-256 实现（当前使用明文占位）
+// ── SHA-256 ─────────────────────────────────────────────────────
 
-std::string JwtService::Sha256(const std::string& data) {
-    // TODO: placeholder - replace with real SHA-256
-    return data;
+namespace {
+// Pure C++ SHA-256 implementation (FIPS 180-4)
+struct Sha256Ctx {
+    uint32_t h[8];
+    uint64_t bitlen;
+    uint8_t  buf[64];
+};
+
+static inline uint32_t rotr(uint32_t x, int n) { return (x >> n) | (x << (32 - n)); }
+static inline uint32_t sha256_ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (~x & z); }
+static inline uint32_t sha256_maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }
+static inline uint32_t sha256_sig0(uint32_t x) { return rotr(x, 2)  ^ rotr(x, 13) ^ rotr(x, 22); }
+static inline uint32_t sha256_sig1(uint32_t x) { return rotr(x, 6)  ^ rotr(x, 11) ^ rotr(x, 25); }
+static inline uint32_t sha256_eps0(uint32_t x) { return rotr(x, 7)  ^ rotr(x, 18) ^ (x >> 3);  }
+static inline uint32_t sha256_eps1(uint32_t x) { return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10); }
+
+static const uint32_t K[64] = {
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+};
+
+static void sha256_transform(uint32_t h[8], const uint8_t block[64]) {
+    uint32_t W[64];
+    for (int i = 0; i < 16; ++i)
+        W[i] = (uint32_t)block[i*4] << 24 | (uint32_t)block[i*4+1] << 16 |
+               (uint32_t)block[i*4+2] << 8  | (uint32_t)block[i*4+3];
+    for (int i = 16; i < 64; ++i)
+        W[i] = sha256_eps1(W[i-2]) + W[i-7] + sha256_eps0(W[i-15]) + W[i-16];
+
+    uint32_t a=h[0], b=h[1], c=h[2], d=h[3], e=h[4], f=h[5], g=h[6], hh=h[7];
+    for (int i = 0; i < 64; ++i) {
+        uint32_t t1 = hh + sha256_eps1(e) + sha256_ch(e,f,g) + K[i] + W[i];
+        uint32_t t2 = sha256_sig0(a) + sha256_maj(a,b,c);
+        hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+    }
+    h[0]+=a; h[1]+=b; h[2]+=c; h[3]+=d; h[4]+=e; h[5]+=f; h[6]+=g; h[7]+=hh;
 }
 
-// ── HMAC-SHA256 ─────────────────────────────────────────────────
-// TODO: placeholder - replace with real HMAC-SHA256
+static void sha256_init(Sha256Ctx& ctx) {
+    ctx.h[0]=0x6a09e667; ctx.h[1]=0xbb67ae85; ctx.h[2]=0x3c6ef372; ctx.h[3]=0xa54ff53a;
+    ctx.h[4]=0x510e527f; ctx.h[5]=0x9b05688c; ctx.h[6]=0x1f83d9ab; ctx.h[7]=0x5be0cd19;
+    ctx.bitlen = 0;
+}
+
+static void sha256_update(Sha256Ctx& ctx, const uint8_t* data, size_t len) {
+    size_t off = (size_t)ctx.bitlen / 8 % 64;
+    ctx.bitlen += (uint64_t)len * 8;
+    for (size_t i = 0; i < len; ++i) {
+        ctx.buf[off++] = data[i];
+        if (off == 64) { sha256_transform(ctx.h, ctx.buf); off = 0; }
+    }
+}
+
+static std::string sha256_final(const Sha256Ctx& ctx) {
+    // Work on a local copy to avoid mutating the const ctx
+    Sha256Ctx tmp;
+    tmp.bitlen = ctx.bitlen;
+    std::memcpy(tmp.h, ctx.h, sizeof(tmp.h));
+    std::memcpy(tmp.buf, ctx.buf, sizeof(tmp.buf));
+
+    size_t off = (size_t)(tmp.bitlen / 8 % 64);
+    uint8_t* b = tmp.buf;
+    b[off++] = 0x80;
+    if (off > 56) { std::memset(b+off, 0, 64-off); sha256_transform(tmp.h, b); std::memset(b, 0, 56); }
+    else { std::memset(b+off, 0, 56-off); }
+    uint8_t* tail = b + 56;
+    tail[0] = (uint8_t)(tmp.bitlen >> 56); tail[1] = (uint8_t)(tmp.bitlen >> 48);
+    tail[2] = (uint8_t)(tmp.bitlen >> 40); tail[3] = (uint8_t)(tmp.bitlen >> 32);
+    tail[4] = (uint8_t)(tmp.bitlen >> 24); tail[5] = (uint8_t)(tmp.bitlen >> 16);
+    tail[6] = (uint8_t)(tmp.bitlen >> 8);  tail[7] = (uint8_t)(tmp.bitlen);
+    sha256_transform(tmp.h, b);
+    std::string result;
+    result.reserve(32);
+    for (int i = 0; i < 8; ++i) {
+        result += (char)(tmp.h[i] >> 24);
+        result += (char)((tmp.h[i] >> 16) & 0xff);
+        result += (char)((tmp.h[i] >> 8)  & 0xff);
+        result += (char)(tmp.h[i] & 0xff);
+    }
+    return result;
+}
+
+// ── HMAC-SHA256 (RFC 2104) ──────────────────────────────────────
+static std::string hmac_sha256(const std::string& key, const std::string& message) {
+    uint8_t k[64] = {0};
+    if (key.size() > 64) {
+        Sha256Ctx tmp; sha256_init(tmp); sha256_update(tmp, (const uint8_t*)key.data(), key.size());
+        std::string hash = sha256_final(tmp);
+        std::memcpy(k, hash.data(), 32);
+    } else {
+        std::memcpy(k, key.data(), key.size());
+    }
+
+    uint8_t ipad[64], opad[64];
+    for (int i = 0; i < 64; ++i) { ipad[i] = k[i] ^ 0x36; opad[i] = k[i] ^ 0x5c; }
+
+    Sha256Ctx inner; sha256_init(inner); sha256_update(inner, ipad, 64);
+    sha256_update(inner, (const uint8_t*)message.data(), message.size());
+    std::string inner_hash = sha256_final(inner);
+
+    Sha256Ctx outer; sha256_init(outer); sha256_update(outer, opad, 64);
+    sha256_update(outer, (const uint8_t*)inner_hash.data(), 32);
+    return sha256_final(outer);
+}
+} // namespace
+
+std::string JwtService::Sha256(const std::string& data) {
+    Sha256Ctx ctx; sha256_init(ctx); sha256_update(ctx, (const uint8_t*)data.data(), data.size());
+    return sha256_final(ctx);
+}
 
 std::string JwtService::HmacSha256(const std::string& data, const std::string& key) {
-    // TODO: placeholder - returns raw data concatenated with key
-    return data + key;
+    return hmac_sha256(key, data);
 }
 
 // ── JSON helpers ────────────────────────────────────────────────
@@ -246,6 +359,14 @@ AuthPreHandler MakeJwtMiddleware(JwtService& svc) {
         headers["x-user-id"] = token->subject;
         return true;
     };
+}
+
+std::string HashSha256(const std::string& data) {
+    Sha256Ctx ctx; sha256_init(ctx); sha256_update(ctx, (const uint8_t*)data.data(), data.size());
+    std::string raw = sha256_final(ctx);
+    std::ostringstream oss;
+    for (unsigned char c : raw) oss << std::hex << std::setw(2) << std::setfill('0') << (int)c;
+    return oss.str();
 }
 
 } // namespace auth

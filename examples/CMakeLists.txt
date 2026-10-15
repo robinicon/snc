@@ -43,6 +43,18 @@ target_link_libraries(example_03_game PRIVATE
     snc_mmorpg
 )
 
+# ── 示例 04 — Gate 服（TCP 接入 + JWT 验签 + 消息路由）────────────
+add_executable(example_04_gate
+    example_04_gate.cpp
+)
+target_link_libraries(example_04_gate PRIVATE
+    snc_rpc
+    snc_discovery
+    snc_auth
+    snc_base
+    snc_mmorpg
+)
+
 # ── 示例 05 — World 服（跨服场景管理 + 状态机）──────────────────
 add_executable(example_05_world
     example_05_world.cpp
@@ -69,27 +81,11 @@ target_link_libraries(example_06_mmorpg PRIVATE
     snc_mmorpg
 )
 
-# ── MSVC 编译器选项 ─────────────────────────────────────────────
-if(MSVC)
-    foreach(_target
-            example_01_account example_02_master example_03_game
-            example_05_world example_06_mmorpg)
-        target_compile_options(${_target} PRIVATE /W4 /WX- /utf-8)
-        target_compile_definitions(${_target} PRIVATE _CRT_SECURE_NO_WARNINGS)
-    endforeach()
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    foreach(_target
-            example_01_account example_02_master example_03_game
-            example_05_world example_06_mmorpg)
-        target_compile_options(${_target} PRIVATE -Wall -Wextra -Wpedantic)
-    endforeach()
-endif()
-
 # ── Windows 链接库 ──────────────────────────────────────────────
 if(WIN32)
     foreach(_target
             example_01_account example_02_master example_03_game
-            example_05_world example_06_mmorpg)
+            example_04_gate example_05_world example_06_mmorpg)
         target_link_libraries(${_target} PRIVATE ws2_32)
     endforeach()
 endif()

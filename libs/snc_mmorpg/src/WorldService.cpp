@@ -103,6 +103,73 @@ void WorldService::NotifyMaster_(int32_t sceneId, SceneState newState) {
     SNC_LOG_DEBUG("world", "NotifyMaster: %s", oss.str().c_str());
 }
 
+void WorldService::NotifyGameServers_(int32_t sceneId, SceneState newState,
+                                       const std::vector<int32_t>& gameIds) {
+    std::ostringstream oss;
+    if (newState == SceneState::ACTIVE) {
+        oss << "{\"event\":\"scene_begin\",\"scene_id\":" << sceneId << "}";
+    } else if (newState == SceneState::ENDING || newState == SceneState::IDLE) {
+        oss << "{\"event\":\"scene_end\",\"scene_id\":" << sceneId << "}";
+    }
+    std::string payload = oss.str();
+    std::lock_guard<std::mutex> lk(cross_mtx_);
+    auto sit = cross_scene_clients_.find(sceneId);
+    if (sit == cross_scene_clients_.end()) return;
+    for (int32_t gid : gameIds) {
+        auto git = sit->second.find(gid);
+        if (git != sit->second.end() && git->second) {
+            git->second->Call(0x3100, payload.c_str(), payload.size(), nullptr);
+        }
+    }
+}
+
+int32_t WorldService::CreateCrossScene(const std::string& sceneName,
+                                        const std::vector<int32_t>& gameServerIds) {
+    int32_t id = CreateScene(sceneName, {});
+    if (id < 0) return -1;
+    // 记录跨服路由表（从 ServiceRegistry 解析 Game 服地址）
+    std::lock_guard<std::mutex> lk(cross_mtx_);
+    cross_scene_clients_[id] = {};
+    if (registry_) {
+        auto endpoints = registry_->GetHealthy("game");
+        for (auto& ep : endpoints) {
+            for (int32_t gid : gameServerIds) {
+                // 简化：用 endpoint host:port 作为标识，实际应传入 game 服务名
+                (void)gid; (void)ep;
+                // 真实实现需要通过 registry 查询具体 game_XX 实例
+            }
+        }
+    }
+    SNC_LOG_INFO("world.cross", "Cross-scene %d created for %zu game servers",
+                 id, gameServerIds.size());
+    return id;
+}
+
+void WorldService::OnGameServerDisconnected(int32_t gameServerId, int32_t sceneId) {
+    (void)gameServerId;
+    std::lock_guard<std::mutex> lk(scenes_mtx_);
+    auto it = scenes_.find(sceneId);
+    if (it == scenes_.end()) return;
+    // 标记该服玩家离线（当前 stub：仅记录日志）
+    SNC_LOG_WARN("world.cross", "Game server %d disconnected from scene %d — players marked offline",
+                 gameServerId, sceneId);
+    // 继续场景至结束：不立即终止，允许剩余服完成场景
+}
+
+bool WorldService::EndCrossScene(int32_t sceneId) {
+    bool ok = EndScene(sceneId);
+    if (!ok) return false;
+    // 通知所有参与 Game 服
+    std::vector<int32_t> gameIds;
+    std::lock_guard<std::mutex> lk(cross_mtx_);
+    auto it = cross_scene_clients_.find(sceneId);
+    if (it != cross_scene_clients_.end()) {
+        for (auto& [gid, _] : it->second) gameIds.push_back(gid);
+    }
+    NotifyGameServers_(sceneId, SceneState::IDLE, gameIds);
+    return true;
+}
+
 void WorldService::OnSceneRequest_(core::IConnection::Ptr conn,
                                     rpc::RpcSession::Ptr session,
                                     core::Msg::Ptr msg,

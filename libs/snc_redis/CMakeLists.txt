@@ -17,7 +17,7 @@ target_include_directories(snc_redis
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/libs/snc_redis/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(snc_redis PUBLIC snc_base)
@@ -31,9 +31,4 @@ else()
     message(STATUS "snc_redis: stub mode (no hiredis)")
 endif()
 
-if(MSVC)
-    target_compile_options(snc_redis PRIVATE /W4 /WX- /utf-8)
-    target_compile_definitions(snc_redis PRIVATE _CRT_SECURE_NO_WARNINGS)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(snc_redis PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+if(SNC_REDIS_CLIENT)

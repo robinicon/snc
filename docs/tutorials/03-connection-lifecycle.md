@@ -92,12 +92,12 @@ auto conn = std::make_shared<TcpConnection>(sock, 65536, 32768);
 
 ## 消息路由
 
-`MsgRouterCpp` 提供按消息 ID 分发处理函数的机制：
+`MsgRouter` 提供按消息 ID 分发处理函数的机制：
 
 ```cpp
 #include "snc/core/MsgRouter.h"
 
-MsgRouterCpp router;
+MsgRouter router;
 
 router.RegisterHandler(0x1001, [](IConnection::Ptr conn, Msg::Ptr msg) {
     // 处理登录消息
@@ -193,4 +193,4 @@ int main()
 | `EntityHandle<T>` | 跨线程安全弱引用 |
 | `RpcServer` | RPC 服务端，注册/路由消息 |
 | `RpcClient` | RPC 客户端，带自动重连 |
-| `MsgRouterCpp` | 按 msgId 分发消息处理函数 |
+| `MsgRouter` | 按 msgId 分发消息处理函数 |

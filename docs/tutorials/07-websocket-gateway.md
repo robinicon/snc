@@ -27,7 +27,7 @@ target_link_libraries(my_app PRIVATE snc_websocket snc_auth snc_base)
 头文件入口：
 
 ```cpp
-#include <snc/ws/WsGateway.h>
+#include <snc/ws/WsConnection.h>
 ```
 
 ## 核心抽象：IGatewayBridge
@@ -94,7 +94,7 @@ public:
 ## 完整示例
 
 ```cpp
-#include <snc/ws/WsGateway.h>
+#include <snc/ws/WsConnection.h>
 #include <snc/auth/AuthService.h>
 #include <iostream>
 #include <unordered_map>

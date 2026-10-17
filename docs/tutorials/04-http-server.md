@@ -5,7 +5,7 @@
 ## 概述
 
 `snc_http` 是一个轻量级 HTTP 服务器，适用于游戏管理后台、运营 API、健康检查等场景。
-它不依赖任何第三方网络库，在 Windows 使用 `select`，在 Linux 使用 `epoll`（若 `SNC_USE_EPOLL=ON`）。
+它不依赖任何第三方网络库，底层使用 `select`（Windows）/ `epoll`（Linux）/ `kqueue`（macOS）。
 
 > **注意**：此模块用于 HTTP 管理接口，不参与游戏业务逻辑。业务处理应在业务 C++ 代码或 Lua 脚本中完成。
 

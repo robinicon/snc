@@ -8,8 +8,11 @@
 
 | 后端 | 条件 | 说明 |
 |------|------|------|
-| **Stub**（默认） | `SNC_REDIS_CLIENT=OFF` | 进程内内存存储，零外部依赖 |
-| **Hiredis** | `SNC_REDIS_CLIENT=ON` | 真实 Redis 实例，支持 Pub/Sub |
+| **Stub**（默认） | `SNC_ENABLE_REDIS=ON` 且 `SNC_REDIS_CLIENT=OFF` | 进程内内存存储，零外部依赖 |
+| **Hiredis** | `SNC_ENABLE_REDIS=ON` 且 `SNC_REDIS_CLIENT=ON` | 真实 Redis 实例，支持 Pub/Sub |
+
+> **注意**：需在根 CMakeLists.txt 中先启用 `option(SNC_ENABLE_REDIS ON)` 才编译 `snc_redis` 模块；
+> 再通过 `option(SNC_REDIS_CLIENT ON)` 切换为 hiredis 后端。
 
 头文件入口：
 
@@ -19,7 +22,7 @@
 
 ## Stub 后端（默认）
 
-不启用 `SNC_REDIS_CLIENT` 时，所有命令在进程内通过 `std::map` 模拟执行。
+不启用 `SNC_REDIS_CLIENT`（或 `SNC_ENABLE_REDIS=OFF`）时，所有命令在进程内通过 `std::map` 模拟执行。
 
 ```cpp
 #include <snc/redis/Client.h>
@@ -59,7 +62,7 @@ redis->Del("player:1001:session");
 
 ## Hiredis 后端
 
-启用 `SNC_REDIS_CLIENT=ON` 后链接真实 hiredis：
+启用 `SNC_REDIS_CLIENT=ON`（需同时 `SNC_ENABLE_REDIS=ON`）后链接真实 hiredis：
 
 ```bash
 # 需预先安装 hiredis（Linux: apt-get install libhiredis-dev；Windows: vcpkg install hiredis）

@@ -28,9 +28,9 @@ auto conn = handle.lock();
 if (!conn) return;   // 连接已关闭，安全跳过
 
 // 检查有效性（不获取强引用，无额外引用计数开销）
-bool alive = (bool)handle;   // 隐式转换为 bool
+bool alive = (bool)handle;   // 隐式转换为 bool（调用 weak_ptr::lock() 不存储结果）
 // 或
-bool alive = handle.isValid(); // 旧接口，等价
+bool alive = !!handle;
 ```
 
 ## TcpConnection 提供的便捷方法

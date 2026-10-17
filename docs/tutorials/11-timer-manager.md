@@ -57,7 +57,8 @@ int64_t repeatId = tm.AddRepeatingTimer(1000, []() {
 
 ## 在事件循环中集成
 
-`TimerManager` 不自带事件循环，需由调用方在每帧驱动 `ProcessTimers()`：
+`TimerManager` 不自带事件循环，需由调用方在每帧驱动 `ProcessTimers()`。
+EventLoop 在独立线程中运行，主线程通过 `IsRunning()` 判断是否退出：
 
 ```cpp
 #include <snc/core.h>
@@ -79,13 +80,10 @@ int main() {
         eventLoop->Run();
     });
 
-    // 主线程主循环：每帧驱动定时器 + 允许外部停止信号
+    // 主线程主循环：驱动定时器 + 等待事件循环退出
     while (eventLoop->IsRunning()) {
-        long long timeout = tm.NextTimeoutMs();
-        // 将 timeout 传入 select/epoll_wait 作为等待上限
-        // （此处省略多路复用代码）
-        eventLoop->Step(/* timeoutMs */ timeout);
         tm.ProcessTimers();   // 驱动到期任务
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     loopThread.join();

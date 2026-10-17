@@ -8,7 +8,7 @@ EventLoop 是网络 I/O 的核心调度器，底层根据平台自动选择实�
 
 | 平台 | 后端 | 说明 |
 |------|------|------|
-| Windows | IOCP | 完成端口，高并发首选 |
+| Windows | select | select() 轮询（类 IOCP 命名，实际为 select） |
 | Linux | epoll | epoll_wait() |
 | macOS | kqueue | kevent()（BSD 等效） |
 

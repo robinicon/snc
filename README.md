@@ -93,9 +93,17 @@ cmake --build build -j$(nproc)
 
 ### CMake 预设
 
-项目附带 `CMakePresets.json`，包含四种预设配置：
+项目附带 `CMakePresets.json`，包含四种预设 × 三种构建工具（MSVC/Ninja/Makefiles），共 12 个预设：
 
-| 预设 | 说明 |
+| 预设后缀 | 说明 |
+|----------|------|
+| `-msvc` | Visual Studio 生成器（Windows） |
+| `-ninja` | Ninja 生成器（跨平台，推荐 Linux/macOS） |
+| `-makefiles` | Unix Makefiles / NMake（跨平台） |
+
+每种后缀对应四种配置级别：
+
+| 配置 | 说明 |
 |------|------|
 | `minimal` | 仅 `snc_base` + `snc_core` + `snc_rpc` |
 | `normal` | minimal + `snc_rpc_lua` + `snc_monitor` |
@@ -103,8 +111,13 @@ cmake --build build -j$(nproc)
 | `relwithdebinfo` | Release 含调试信息（默认） |
 
 ```bash
-cmake --preset=full
-cmake --build --preset=full
+# Windows (MSVC)
+cmake --preset=full-msvc
+cmake --build --preset=full-msvc
+
+# Linux / macOS (Ninja)
+cmake --preset=full-ninja
+cmake --build --preset=full-ninja
 ```
 
 ### 功能开关
@@ -121,7 +134,13 @@ cmake --build --preset=full
 | `SNC_ENABLE_AUTH` | ON | 启用 JWT 认证模块 |
 | `SNC_ENABLE_ADMIN` | ON | 启用 Admin API 模块 |
 | `SNC_ENABLE_WEBSOCKET` | OFF | 启用 WebSocket 网关模块 |
-| `SNC_REDIS_CLIENT` | OFF | 启用 hiredis Redis 后端（默认：内存 stub） |
+| `SNC_ENABLE_REDIS` | OFF | 编译 snc_redis 模块（ stub 默认；hiredis 需 `libs/snc_redis/CMakeLists.txt` 中设 `SNC_REDIS_CLIENT=ON`） |
+| `SNC_ENABLE_MYSQL` | OFF | 编译 snc_db MySQL 后端 |
+| `SNC_USE_ASIO` | OFF | 使用独立 Asio 头文件作为网络后端 |
+| `SNC_BUILD_MMORPG` | ON | 编译 snc_mmorpg（MMORPG 服务组件） |
+| `SNC_BUILD_MMO_LEGEND` | ON | 编译 Legend MMO 子模块 |
+| `SNC_BUILD_EXAMPLES` | ON | 编译示例程序 |
+| `SNC_BUILD_TESTS` | ON | 编译单元测试 |
 
 ## 架构设计
 
@@ -271,6 +290,7 @@ snc/
 │   ├── mmorpg/             # MMORPG 服务组件（GateService、GameService、WorldService）
 │   ├── core.h / rpc.h      # 聚合头文件
 ├── src/                    # 核心库源码
+│   ├── core_asio/          # Asio 后端事件循环实现
 ├── libs/                   # 各子模块 CMake 子项目
 │   ├── snc_base/
 │   ├── snc_core/
@@ -287,12 +307,14 @@ snc/
 │   ├── snc_db/
 │   ├── snc_serial_pb/
 │   ├── snc_serial_fbs/
-│   └── snc_rpc_lua/
+│   ├── snc_rpc_lua/
+│   └── asio_standalone/    # 独立 Asio 头文件（SNC_USE_ASIO 时启用）
+├── mmo/                    # Legend MMO 子模块
 ├── examples/               # 示例代码
 ├── proto/                  # Protobuf 定义文件
 ├── tests/                  # 单元测试（自包含 Catch2-like 测试框架）
 ├── docs/
-│   ├── tutorials/          # 入门教程（01~16）
+│   ├── tutorials/          # 入门教程（01~19）
 │   ├── modules/            # 模块详细文档
 │   └── design/             # 架构设计文档
 └── thirdparty/             # 第三方头文件

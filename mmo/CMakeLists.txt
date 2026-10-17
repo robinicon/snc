@@ -35,6 +35,7 @@ target_link_libraries(snc_mmo_legend PUBLIC
     snc_rpc
     snc_discovery
     snc_auth
+    $<$<BOOL:${SNC_ENABLE_FLATBUFFERS}>:snc_serial_fbs>
 )
 
 # ── Find Lua（与 snc_rpc_lua 策略一致：未找到时降级为 stub）──────

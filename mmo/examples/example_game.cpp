@@ -21,7 +21,7 @@ int main() {
 
     // 1. 创建必要的基础组件（本示例不依赖真实 Master）
     auto registry = snc::discovery::ServiceRegistry::Create();
-    auth::JwtConfig jwtCfg{"legend_secret_key_2024", 7200, "snc", "HS256"};
+    auth::JwtConfig jwtCfg{"legend-mmo-secret-key-2024-for-demo-use-only!!", 7200, "snc", "HS256"};
     rpc::RpcClient::Ptr null_master; // 空 Master 引用（演示用）
 
     // 2. 创建 GameService

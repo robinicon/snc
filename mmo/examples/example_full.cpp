@@ -29,7 +29,7 @@ int main() {
 
     // ── 阶段 1：初始化基础设施 ───────────────────────────────────
     auto registry = snc::discovery::ServiceRegistry::Create();
-    auth::JwtConfig jwtCfg{"demo_secret_key", 7200, "snc", "HS256"};
+    auth::JwtConfig jwtCfg{"legend-mmo-demo-secret-key-2024-local!!", 7200, "snc", "HS256"};
 
     GameService svc(nullptr /* no real master */, registry, jwtCfg);
     svc.Init();

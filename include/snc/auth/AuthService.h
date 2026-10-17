@@ -91,5 +91,12 @@ AuthPreHandler MakeJwtMiddleware(JwtService& svc);
 /// SHA-256 哈希（十六进制字符串），供账号密码哈希等场景使用
 std::string HashSha256(const std::string& data);
 
+/// 对密码加盐并哈希：生成随机 salt（16字节 hex），返回 "salt$hash" 格式
+/// 存库时存完整字符串，验证时拆盐重算比对
+std::string HashPasswordWithSalt(const std::string& password);
+
+/// 从 "salt$hash" 格式中提取 salt
+std::string ExtractSalt_(const std::string& salted_hash);
+
 } // namespace auth
 } // namespace snc

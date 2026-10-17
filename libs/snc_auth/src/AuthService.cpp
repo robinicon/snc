@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
+#include <random>
 
 namespace snc {
 namespace auth {
@@ -111,7 +112,7 @@ static void sha256_transform(uint32_t h[8], const uint8_t block[64]) {
 
     uint32_t a=h[0], b=h[1], c=h[2], d=h[3], e=h[4], f=h[5], g=h[6], hh=h[7];
     for (int i = 0; i < 64; ++i) {
-        uint32_t t1 = hh + sha256_eps1(e) + sha256_ch(e,f,g) + K[i] + W[i];
+        uint32_t t1 = hh + sha256_sig1(e) + sha256_ch(e,f,g) + K[i] + W[i];
         uint32_t t2 = sha256_sig0(a) + sha256_maj(a,b,c);
         hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
     }
@@ -365,8 +366,34 @@ std::string HashSha256(const std::string& data) {
     Sha256Ctx ctx; sha256_init(ctx); sha256_update(ctx, (const uint8_t*)data.data(), data.size());
     std::string raw = sha256_final(ctx);
     std::ostringstream oss;
-    for (unsigned char c : raw) oss << std::hex << std::setw(2) << std::setfill('0') << (int)c;
+    for (unsigned char c : raw) oss << std::hex << std::setw(2) << std::setfill('0') << (uint32_t)c;
     return oss.str();
+}
+
+// ── Password hashing with salt ──────────────────────────────────
+
+namespace {
+std::string GenerateRandomHex_(size_t bytes) {
+    static thread_local std::mt19937 rng(std::random_device{}());
+    static thread_local std::uniform_int_distribution<int> dist(0, 15);
+    std::ostringstream oss;
+    for (size_t i = 0; i < bytes; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)dist(rng);
+    }
+    return oss.str();
+}
+} // namespace
+
+std::string HashPasswordWithSalt(const std::string& password) {
+    std::string salt = GenerateRandomHex_(16); // 16 bytes = 32 hex chars
+    std::string hash = HashSha256(salt + password);
+    return salt + "$" + hash;
+}
+
+std::string ExtractSalt_(const std::string& salted_hash) {
+    auto pos = salted_hash.find('$');
+    if (pos == std::string::npos || pos == 0 || pos + 1 >= salted_hash.size()) return "";
+    return salted_hash.substr(0, pos);
 }
 
 } // namespace auth

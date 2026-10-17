@@ -85,11 +85,23 @@ public:
         std::lock_guard<std::mutex> lk(mtx_);
         if (timers_.empty()) return -1;
         long long now = base::NowMilliSeconds();
+        // timers_ is sorted by expireMs (map key is id, not expireMs — so scan first entry only won't work).
+        // Use min-heap of (expireMs, id) for O(1) peek instead.
+        // For now keep O(N) but prune already-fired timers to reduce work.
         long long minExpire = -1;
-        for (auto& p : timers_) {
-            if (p.second.expireMs > now) {
-                long long diff = p.second.expireMs - now;
-                if (minExpire < 0 || diff < minExpire) minExpire = diff;
+        for (auto it = timers_.begin(); it != timers_.end(); ++it) {
+            if (it->second.expireMs <= now) {
+                // Already expired; fire the callback and remove
+                TimerCallback cb = it->second.cb;
+                if (it->second.repeating) {
+                    it->second.expireMs = now + it->second.repeatMs;
+                } else {
+                    it = timers_.erase(it);
+                    continue;
+                }
+                if (cb) cb();
+            } else if (minExpire < 0 || it->second.expireMs - now < minExpire) {
+                minExpire = it->second.expireMs - now;
             }
         }
         return minExpire;

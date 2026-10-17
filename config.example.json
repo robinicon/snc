@@ -1,0 +1,70 @@
+{
+    "$schema": "https://raw.githubusercontent.com/snc-server/snc/main/schemas/config.json",
+    "_comment": "SNC MMORPG Server Configuration — copy to config.json and modify for your environment",
+
+    "master": {
+        "host": "127.0.0.1",
+        "port": 23000,
+        "admin_port": 9001,
+        "heartbeat_interval_ms": 5000,
+        "health_check_interval_ms": 10000
+    },
+
+    "gate": {
+        "host": "0.0.0.0",
+        "port": 23001,
+        "max_connections": 4096,
+        "timeout_ms": 30000,
+        "message_queue_size": 256
+    },
+
+    "account": {
+        "host": "127.0.0.1",
+        "port": 23002,
+        "jwt": {
+            "secret": "${SNC_JWT_SECRET}",
+            "expire_secs": 7200,
+            "issuer": "snc"
+        }
+    },
+
+    "database": {
+        "type": "mysql",
+        "mysql": {
+            "host": "${SNC_DB_HOST}",
+            "port": ${SNC_DB_PORT},
+            "user": "${SNC_DB_USER}",
+            "password": "${SNC_DB_PASSWORD}",
+            "database": "${SNC_DB_NAME}"
+        },
+        "redis": {
+            "host": "${SNC_REDIS_HOST}",
+            "port": ${SNC_REDIS_PORT},
+            "password": "${SNC_REDIS_PASSWORD}"
+        }
+    },
+
+    "mmo": {
+        "game_secret": "${SNC_MMO_GAME_SECRET}",
+        "full_secret": "${SNC_MMO_FULL_SECRET}",
+        "combat": {
+            "tick_rate_hz": 30,
+            "max_targets_per_attack": 5,
+            "safe_zone_pk_enabled": true
+        },
+        "guild": {
+            "max_members": 50,
+            "min_level_to_create": 10
+        },
+        "npc": {
+            "talk_dialog_base_id": 1000,
+            "trade_enabled": true
+        }
+    },
+
+    "logging": {
+        "level": "${SNC_LOG_LEVEL}",
+        "to_file": true,
+        "log_dir": "./logs"
+    }
+}

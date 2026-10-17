@@ -1,0 +1,254 @@
+/// @file legend.fbs
+/// @brief 传奇 MMO 消息 FlatBuffers schema
+///
+/// 消息 ID 空间（C++ 常量，见 GameService.h）：
+///   0x1100 ~ 0x11FF  客户端→Game（Gate 转发）
+///   0x1200 ~ 0x12FF  Game→客户端（推送，Gate 转发）
+///   0x1000 ~ 0x10FF  认证相关
+///
+/// 序列化约定：
+///   SNC 协议头部 [msgId int32][payloadLen int32] + payload
+///   payload 整体作为 FlatBuffers 字节流传入/传出
+///   FbsSerializer::Encode 在 FlatBuffers 数据前加 4 字节大端长度前缀
+///   （此 schema 仅定义消息结构，实际网络传输由上层封装 SNC 头部）
+
+namespace snc.mmorpg.legend;
+
+// ── 基础类型 ─────────────────────────────────────────────────────
+
+enum ClassType: byte { Warrior = 0, Mage = 1, Taoist = 2 }
+
+enum PKStatus: byte { Normal = 0, RedName = 1, VeryRed = 2 }
+
+// ── 客户端→服务端请求（C→S，0x11xx）──────────────────────────────
+
+// 0x1100 MoveRequest
+table MoveRequest {
+    map_id: int32;
+    x: int32;
+    y: int32;
+}
+
+// 0x1101 AttackRequest
+table AttackRequest {
+    target_id: int32;      // 攻击目标实体 ID（0=无目标，回自动锁定最近怪物）
+    attack_type: int8;     // 0=物理 1=魔法
+}
+
+// 0x1102 NPCDialogRequest
+table NPCDialogRequest {
+    npc_id: int32;
+    action: int32;         // 0=对话 1=购买 2=出售 3=传送
+    param: int32;          // 传送目标地图 ID（action=3 时使用）
+}
+
+// 0x1103 ChatRequest
+table ChatRequest {
+    channel: int8;         // 0=附近 1=系统 2=世界 3=行会
+    content: string;
+}
+
+// 0x1104 PickupRequest
+table PickupRequest {
+
+}
+
+// 0x1105 SkillRequest
+table SkillRequest {
+    skill_id: int32;
+    target_id: int32;      // 目标实体 ID（治疗技能为目标自身时传 0）
+}
+
+// 0x1106 GuildRequest
+table GuildRequest {
+    action: int32;         // 0=创建 1=加入 2=退出 3=申请 4=公告
+    param_str: string;     // 行会名 / 公告内容等
+}
+
+// ── 服务端→客户端推送（S→C，0x12xx）─────────────────────────────
+
+// 0x1200 PlayerSync — 玩家属性全量同步（登录/升级/换装时推送）
+table PlayerSync {
+    player_id: int32;
+    nickname: string;
+    class_type: ClassType;
+    level: int32;
+    exp: int64;
+    gold: int64;
+    current_hp: int32;
+    current_mp: int32;
+    max_hp: int32;
+    max_mp: int32;
+    str: int32;
+    mag: int32;
+    def: int32;
+    map_id: int32;
+    x: int32;
+    y: int32;
+    pk_status: PKStatus;
+    guild_name: string;
+}
+
+// 0x1201 PosSync — 实体位置批量同步
+table PosSync {
+    entries: [EntityPos];
+}
+
+table EntityPos {
+    entity_id: int32;
+    entity_type: int8;     // 0=Player 1=Monster 2=NPC 3=Pet
+    map_id: int32;
+    x: int32;
+    y: int32;
+    hp: int32;             // 当前 HP（0=已死亡）
+}
+
+// 0x1202 DamageResult — 单次伤害结果
+table DamageResult {
+    target_id: int32;
+    damage: int32;
+    is_critical: bool;
+    blocked: bool;
+    attacker_id: int32;    // 攻击者 ID（0=环境伤害）
+    combat_log: string;    // 伤害日志（调试用）
+}
+
+// 0x1203 DeathNotify — 死亡通知
+table DeathNotify {
+    dead_id: int32;
+    killer_id: int32;      // 击杀者 ID（0=自然死亡/掉落物）
+    drop_table_id: int32;  // 掉落表 ID（怪物死亡时使用）
+}
+
+// 0x1204 DropNotify — 地面掉落物刷新
+table DropNotify {
+    drop_id: int32;
+    item_id: int32;
+    count: int32;
+    map_id: int32;
+    x: int32;
+    y: int32;
+}
+
+// 0x1205 LevelUp — 升级通知
+table LevelUp {
+    player_id: int32;
+    new_level: int32;
+    exp_before: int64;
+    exp_after: int64;
+    hp_recovered: int32;
+    mp_recovered: int32;
+}
+
+// 0x1206 ChatBroadcast — 聊天广播
+table ChatBroadcast {
+    sender_id: int32;
+    sender_name: string;
+    class_type: ClassType;
+    channel: int8;
+    content: string;
+    guild_name: string;    // 行会频道时填写，其他为 ""
+}
+
+// 0x1207 GuildNotice — 行会通知
+table GuildNotice {
+    guild_id: int32;
+    guild_name: string;
+    notice: string;
+    sender_name: string;
+}
+
+// 0x1208 SceneEnter — 进入场景
+table SceneEnter {
+    map_id: int32;
+    map_name: string;
+    x: int32;
+    y: int32;
+    safe_zone: bool;
+    other_players: [OtherPlayerInfo];
+    other_monsters: [EntityPos];
+}
+
+table OtherPlayerInfo {
+    player_id: int32;
+    nickname: string;
+    class_type: ClassType;
+    level: int32;
+    x: int32;
+    y: int32;
+    hp: int32;
+    max_hp: int32;
+}
+
+// 0x1209 SceneLeave — 离开场景
+table SceneLeave {
+    map_id: int32;
+    leaving_ids: [int32];  // 随场景移除的实体 ID 列表
+}
+
+// 0x120A MoveResponse — 移动响应（确认/拒绝）
+table MoveResponse {
+    success: bool;
+    map_id: int32;
+    x: int32;
+    y: int32;
+    error_code: int32;     // 0=成功 1= blocked 2=out of range 3=cooldown
+}
+
+// 0x120B Error — 通用错误提示
+table Error {
+    error_code: int32;
+    message: string;
+}
+
+// ── 认证消息（0x10xx）────────────────────────────────────────────
+
+// 0x1000 AuthLogin — 登录请求
+table AuthLogin {
+    token: string;         // JWT token
+}
+
+// 0x1001 AuthResponse — 登录结果
+table AuthResponse {
+    success: bool;
+    player_id: int32;
+    nickname: string;
+    class_type: ClassType;
+    level: int32;
+    map_id: int32;
+    x: int32;
+    y: int32;
+    error_code: int32;
+    error_msg: string;
+}
+
+// 0x1002 KeepAlive — 心跳
+table KeepAlive {
+    timestamp: int64;
+}
+
+// ── RootTables（供 FbsSerializer 识别）─────────────────────────
+
+root_type PlayerSync;
+root_type MoveRequest;
+root_type AttackRequest;
+root_type NPCDialogRequest;
+root_type ChatRequest;
+root_type PickupRequest;
+root_type SkillRequest;
+root_type GuildRequest;
+root_type DamageResult;
+root_type DeathNotify;
+root_type DropNotify;
+root_type LevelUp;
+root_type ChatBroadcast;
+root_type GuildNotice;
+root_type SceneEnter;
+root_type SceneLeave;
+root_type MoveResponse;
+root_type Error;
+root_type AuthLogin;
+root_type AuthResponse;
+root_type KeepAlive;
+root_type EntityPos;
+root_type OtherPlayerInfo;

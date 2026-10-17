@@ -43,3 +43,8 @@ target_link_libraries(snc_mmorpg PUBLIC
     snc_db
     snc_http
 )
+# Asio 后端：链接 snc_core_asio（由顶层 CMakeLists option(SNC_USE_ASIO) 控制）
+if(SNC_USE_ASIO)
+    target_link_libraries(snc_mmorpg PUBLIC snc_core_asio)
+    target_compile_definitions(snc_mmorpg PUBLIC SNC_USE_ASIO)
+endif()

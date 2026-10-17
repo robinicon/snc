@@ -1,5 +1,6 @@
 # Build output
 build/
+build-*/
 build-normal/
 build-mmo-legend/
 cmake-build-*/
@@ -89,3 +90,8 @@ checksums.txt
 package-lock.json
 yarn.lock
 .pnpm-store/
+
+# Secrets / environment config (templates kept, actuals ignored)
+.env
+.env.local
+config.json

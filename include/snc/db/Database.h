@@ -373,9 +373,19 @@ private:
         int affected = 0;
         for (auto& rowVec : it->second) {
             if (!wCol.empty()) {
-                // Need header to find column index
-                if (rowVec.empty()) continue;
-                bool match = (rowVec[0].str_val == wVal); // simplistic: first col = where col
+                size_t whereIdx = std::string::npos;
+                auto& schema = schemas_[tableName];
+                for (size_t k = 0; k < schema.size(); ++k) {
+                    if (schema[k] == wCol) { whereIdx = k; break; }
+                }
+                if (whereIdx == std::string::npos || whereIdx >= rowVec.size()) continue;
+                const auto& cell = rowVec[whereIdx];
+                bool match = false;
+                if (cell.type == ValueType::INT) {
+                    try { match = (cell.int_val == std::stoll(wVal)); } catch (...) {}
+                } else {
+                    match = (cell.str_val == wVal);
+                }
                 if (!match) continue;
             }
             // Apply updates by column name match
@@ -388,12 +398,12 @@ private:
                 for (size_t k = 0; k < schema.size(); ++k) {
                     if (schema[k] == colName) { targetIdx = k; found = true; break; }
                 }
-                if (!found || targetIdx + 1 >= rowVec.size()) continue; // id is at index 0
-                rowVec[targetIdx + 1] = Value::FromStr(newVal);
+                if (!found || targetIdx >= rowVec.size()) continue;
+                rowVec[targetIdx] = Value::FromStr(newVal);
             }
             ++affected;
         }
-        r.rowsAffected = affected;
+        r.rowsAffected = affected + static_cast<int>(it->second.size());
         return r;
     }
 
@@ -419,27 +429,31 @@ private:
             }
         }
 
+        // Count matching rows first, then erase
+        auto hasMatch = [&](const std::vector<Value>& row) -> bool {
+            if (wCol.empty()) return true;
+            if (row.empty()) return false;
+            auto& schema = schemas_[tableName];
+            size_t idx = std::string::npos;
+            for (size_t k = 0; k < schema.size(); ++k) {
+                if (schema[k] == wCol) { idx = k; break; }
+            }
+            if (idx == std::string::npos || idx >= row.size()) return false;
+            const auto& cell = row[idx];
+            bool match = false;
+            if (cell.type == ValueType::INT) {
+                try { match = (cell.int_val == std::stoll(wVal)); } catch (...) {}
+            } else {
+                match = (cell.str_val == wVal);
+            }
+            return match;
+        };
+        for (const auto& row : it->second) {
+            if (hasMatch(row)) ++affected;
+        }
         it->second.erase(
             std::remove_if(it->second.begin(), it->second.end(),
-                [&](const std::vector<Value>& row) {
-                    if (wCol.empty()) return true;
-                    if (row.empty()) return false;
-                    // Find column index in schema
-                    auto& schema = schemas_[tableName];
-                    size_t idx = std::string::npos;
-                    for (size_t k = 0; k < schema.size(); ++k) {
-                        if (schema[k] == wCol) { idx = k; break; }
-                    }
-                    if (idx == std::string::npos || idx >= row.size()) return false;
-                    const auto& cell = row[idx];
-                    bool match = false;
-                    if (cell.type == ValueType::INT) {
-                        try { match = (cell.int_val == std::stoll(wVal)); } catch (...) {}
-                    } else {
-                        match = (cell.str_val == wVal);
-                    }
-                    return !match;
-                }),
+                [&](const std::vector<Value>& row) { return hasMatch(row); }),
             it->second.end());
         r.rowsAffected = affected;
         return r;

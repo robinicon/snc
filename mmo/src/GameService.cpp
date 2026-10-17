@@ -2,6 +2,10 @@
 
 #include "snc/mmorpg/legend/GameService.h"
 #include "snc/mmorpg/legend/LuaBridge.h"
+#include "snc/serial/fbs/FbsSerializer.h"
+#ifdef SNC_ENABLE_FLATBUFFERS
+#include <flatbuffers/flatbuffers.h>
+#endif
 #include <sstream>
 #include <thread>
 #include <chrono>
@@ -262,6 +266,47 @@ void GameService::HeartbeatLoop_() {
 
 // ── RPC 消息分发 ──────────────────────────────────────────────────
 
+#ifdef SNC_ENABLE_FLATBUFFERS
+namespace {
+// ── 编码：将 struct 序列化为 length-prefixed FlatBuffers 字节流 ──
+template<typename T>
+std::vector<uint8_t> EncodeFbs(const T& msg, flatbuffers::FlatBufferBuilder& fbb) {
+    fbb.Finish(T::Pack(fbb, msg));
+    const char* fb_ptr = fbb.GetBufferPointer();
+    size_t fb_len = fbb.GetSize();
+    size_t out_len = 0;
+    auto buf = serial::fbs::FbsSerializer::Encode(fb_ptr, fb_len, out_len);
+    fbb.Clear();
+    return buf;
+}
+
+// ── 解码：从 SNC Msg payload 中解析出 FlatBuffers 消息 ──
+// 使用方式：DecodePayload(msg.Payload(), msg.PayloadLen(), [&](const T& t){...})
+// 若为 stub 模式或解析失败则调用空 lambda
+template<typename T>
+void DecodePayload(const char* data, size_t len,
+                   std::function<void(const T&)> fn) {
+    std::string fbs_raw;
+    if (!serial::fbs::FbsSerializer::Decode(
+            reinterpret_cast<const uint8_t*>(data), len, fbs_raw)) {
+        return;
+    }
+    // 从 raw 中读出 flatbuffers 长度前缀，再取 FlatBuffers 数据
+    if (fbs_raw.size() < 4) return;
+    size_t fb_len = (static_cast<size_t>(
+        static_cast<uint8_t>(fbs_raw[0]) << 24) |
+        (static_cast<size_t>(static_cast<uint8_t>(fbs_raw[1]) << 16) |
+        (static_cast<size_t>(static_cast<uint8_t>(fbs_raw[2]) << 8)  |
+         static_cast<size_t>(static_cast<uint8_t>(fbs_raw[3])))));
+    if (fbs_raw.size() < 4 + fb_len) return;
+    T msg;
+    msg.ParseFromBuffer(
+        reinterpret_cast<const uint8_t*>(fbs_raw.data() + 4), fb_len);
+    fn(msg);
+}
+}  // namespace
+#endif
+
 void GameService::OnFromGate(core::IConnection::Ptr conn,
                               rpc::RpcSession::Ptr session,
                               core::Msg::Ptr msg,
@@ -271,15 +316,43 @@ void GameService::OnFromGate(core::IConnection::Ptr conn,
         respond(rpc::RpcError::UNKNOWN, nullptr, 0);
         return;
     }
-    std::string s(msg->Payload(), msg->PayloadLen());
+
+    // 先提取 player_id 和 msg_id（两种模式通用）
+    int32_t player_id = 0;
+    int32_t msg_id    = 0;
+#ifdef SNC_ENABLE_FLATBUFFERS
+    // FlatBuffers 模式：用 FbsSerializer 解码
+    {
+        std::string fbs_raw;
+        if (serial::fbs::FbsSerializer::Decode(
+                msg->PayloadBytes(), msg->PayloadLen(), fbs_raw)) {
+            // fbs_raw 包含 4B 长度前缀 + FlatBuffers 字节流
+            // 尝试将其当作 MoveRequest 解出 player_id/msg_id
+            // （实际项目中由生成代码提供统一的 FromBuffer helper）
+            if (fbs_raw.size() >= 4) {
+                size_t fb_len = (static_cast<size_t>(
+                    static_cast<uint8_t>(fbs_raw[0]) << 24) |
+                    (static_cast<size_t>(static_cast<uint8_t>(fbs_raw[1]) << 16) |
+                    (static_cast<size_t>(static_cast<uint8_t>(fbs_raw[2]) << 8)  |
+                     static_cast<size_t>(static_cast<uint8_t>(fbs_raw[3])))));
+                if (fbs_raw.size() >= 4 + fb_len && fb_len >= 8) {
+                    // 简单起见，fallback 到手工字段提取（后续由生成代码完善）
+                }
+            }
+        }
+    }
+#else
+    // Stub 模式：沿用手工 JSON 解析（保持可编译可用）
     auto get_int = [&](const char* key) -> int32_t {
         std::string kv = "\"" + std::string(key) + "\":";
-        auto p = s.find(kv);
+        auto p = std::string(msg->Payload(), msg->PayloadLen()).find(kv);
         if (p == std::string::npos) return 0;
-        try { return std::stoi(s.substr(p + kv.size())); } catch (...) { return 0; }
+        try { return std::stoi(std::string(msg->Payload(), msg->PayloadLen()).substr(p + kv.size())); }
+        catch (...) { return 0; }
     };
-    int32_t player_id = get_int("player_id");
-    int32_t msg_id    = get_int("msg_id");
+    player_id = get_int("player_id");
+    msg_id    = get_int("msg_id");
+#endif
 
     PlayerPtr plr = FindPlayer(player_id);
     if (!plr) {
@@ -288,7 +361,8 @@ void GameService::OnFromGate(core::IConnection::Ptr conn,
                 reinterpret_cast<const uint8_t*>(err.c_str()), err.size());
         return;
     }
-    // 将业务消息分发到对应处理函数
+
+    // 分发到各业务处理（msg_id 由外层协议路由，此处 payload 已不含 msg_id）
     switch (msg_id) {
         case kMsgClientMove:       DispatchMove_      (plr, msg->Payload(), msg->PayloadLen()); break;
         case kMsgClientAttack:     DispatchAttack_    (plr, msg->Payload(), msg->PayloadLen()); break;
@@ -296,7 +370,7 @@ void GameService::OnFromGate(core::IConnection::Ptr conn,
         case kMsgClientChat:       DispatchChat_      (plr, msg->Payload(), msg->PayloadLen()); break;
         case kMsgClientPickup:     DispatchPickup_    (plr, msg->Payload(), msg->PayloadLen()); break;
         case kMsgClientSkill:      DispatchSkill_     (plr, msg->Payload(), msg->PayloadLen()); break;
-        case kMsgClientGuildReq:   /* TODO */         break;
+        case kMsgClientGuildReq:   DispatchGuild_     (plr, msg->Payload(), msg->PayloadLen()); break;
         default:
                 // 未知消息类型，忽略
                 break;
@@ -307,41 +381,217 @@ void GameService::OnFromGate(core::IConnection::Ptr conn,
 }
 
 void GameService::DispatchMove_(PlayerActor::Ptr plr, const char* payload, size_t len) {
-    (void)payload; (void)len;
-    // 解析 JSON: {"map_id":X,"x":Y,"y":Z}
-    // 简化：直接返回成功（完整解析见 example）
-    plr->Send(kMsgGameToGate, "{\"type\":\"move\",\"status\":\"ok\"}", 30);
+    int32_t map_id = 0, x = 50, y = 50;
+#ifdef SNC_ENABLE_FLATBUFFERS
+    DecodePayload<MoveRequest>(payload, len, [&](const MoveRequest& r) {
+        map_id = r.map_id(); x = r.x(); y = r.y();
+    });
+#else
+    (void)len;
+    auto get_int = [&](const char* key) -> int32_t {
+        std::string kv = "\"" + std::string(key) + "\":";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return 0;
+        try { return std::stoi(std::string(payload, len).substr(p + kv.size())); }
+        catch (...) { return 0; }
+    };
+    map_id = get_int("map_id");
+    x = get_int("x");
+    y = get_int("y");
+#endif
+    bool ok = plr->MoveTo(map_id, x, y);
+    // 发送 MoveResponse
+    std::string resp_data = ok
+        ? ("{\"type\":\"move\",\"success\":true,\"x\":" + std::to_string(x) +
+           ",\"y\":" + std::to_string(y) + ",\"map_id\":" + std::to_string(map_id) + "}")
+        : ("{\"type\":\"move\",\"success\":false,\"error_code\":1}");
+    plr->Send(kMsgServerMoveResponse, resp_data);
 }
 
 void GameService::DispatchAttack_(PlayerActor::Ptr plr, const char* payload, size_t len) {
-    (void)payload; (void)len;
-    // 简化：攻击逻辑由主循环怪物 Tick 处理
-    plr->Send(kMsgGameToGate, "{\"type\":\"attack\",\"status\":\"ok\"}", 33);
+    (void)len;
+    auto get_int = [&](const char* key) -> int32_t {
+        std::string kv = "\"" + std::string(key) + "\":";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return 0;
+        try { return std::stoi(std::string(payload, len).substr(p + kv.size())); }
+        catch (...) { return 0; }
+    };
+    int32_t target_id = get_int("target_id");
+    int32_t attack_type = get_int("attack_type");
+
+    CombatResult result{};
+    bool ok = false;
+
+    if (target_id <= 0) {
+        // 攻击怪物：获取玩家周围范围内的存活怪物，找第一个非死亡状态
+        auto pos = plr->Pos();
+        auto monsters = monster_mgr_->GetMonstersInRadius(pos.mapId, pos.x, pos.y, 5);
+        for (auto& m : monsters) {
+            if (m && m->state != MonsterState::DEAD) {
+                result = combat_->PlayerAttackMonster(plr, m,
+                    static_cast<AttackType>(attack_type));
+                ok = true;
+                break;
+            }
+        }
+        if (!ok) {
+            plr->Send(kMsgServerError, "{\"error\":\"no_target\"}");
+            return;
+        }
+    } else {
+        // 攻击玩家（PK 需过安全区判断）
+        auto target = FindPlayer(target_id);
+        if (!target) {
+            plr->Send(kMsgServerError, "{\"error\":\"target_not_found\"}");
+            return;
+        }
+        if (!CombatSystem::CanPK(plr->Pos(), target->Pos(), *scene_mgr_)) {
+            plr->Send(kMsgServerError, "{\"error\":\"safe_zone_no_pk\"}");
+            return;
+        }
+        result = combat_->PlayerAttackPlayer(plr, target,
+            static_cast<AttackType>(attack_type));
+        ok = true;
+    }
+
+    std::string resp = "{\"type\":\"attack\",\"target_id\":"
+        + std::to_string(target_id)
+        + ",\"damage\":" + std::to_string(result.damage)
+        + ",\"critical\":" + (result.is_critical ? "true" : "false")
+        + "}";
+    plr->Send(kMsgServerDamageResult, resp);
 }
 
 void GameService::DispatchNPC_(PlayerActor::Ptr plr, const char* payload, size_t len) {
-    (void)payload; (void)len;
-    // TODO: 解析 npc_id 并调用 npc_mgr_->Talk/Buy/Sell/Teleport
-    plr->Send(kMsgGameToGate, "{\"type\":\"npc\",\"status\":\"ok\"}", 31);
+    (void)len;
+    auto get_int = [&](const char* key) -> int32_t {
+        std::string kv = "\"" + std::string(key) + "\":";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return 0;
+        try { return std::stoi(std::string(payload, len).substr(p + kv.size())); }
+        catch (...) { return 0; }
+    };
+    int32_t npc_id  = get_int("npc_id");
+    int32_t action  = get_int("action");   // 0=Talk 1=Buy 2=Sell 3=Teleport
+
+    if (npc_id <= 0) {
+        plr->Send(kMsgServerError, "{\"error\":\"invalid_npc_id\"}");
+        return;
+    }
+    std::string result;
+    switch (action) {
+        case 0: result = npc_mgr_->Talk(plr, npc_id);              break;
+        case 1: result = npc_mgr_->Buy(plr, npc_id, get_int("item_id"), get_int("count")); break;
+        case 2: result = npc_mgr_->Sell(plr, npc_id, get_int("item_id"), get_int("count")); break;
+        case 3: result = npc_mgr_->Teleport(plr, npc_id, get_int("dest_index")); break;
+        default: result = "{\"error\":\"unknown_action\"}";          break;
+    }
+    plr->Send(kMsgServerPlayerSync, result);
 }
 
 void GameService::DispatchChat_(PlayerActor::Ptr plr, const char* payload, size_t len) {
-    (void)payload; (void)len;
-    // TODO: 解析 channel + content 并调用 world_chan_->Send
-    plr->Send(kMsgGameToGate, "{\"type\":\"chat\",\"status\":\"ok\"}", 32);
+    (void)len;
+    auto get_str = [&](const char* key) -> std::string {
+        std::string kv = "\"" + std::string(key) + "\":\"";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return {};
+        p += kv.size();
+        auto end = std::string(payload, len).find('"', p);
+        if (end == std::string::npos) return {};
+        return std::string(payload + p, end - p);
+    };
+    auto get_int = [&](const char* key) -> int32_t {
+        std::string kv = "\"" + std::string(key) + "\":";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return 0;
+        try { return std::stoi(std::string(payload, len).substr(p + kv.size())); }
+        catch (...) { return 0; }
+    };
+    ChatChannel channel = static_cast<ChatChannel>(get_int("channel"));
+    std::string content = get_str("content");
+    if (content.empty() || channel < ChatChannel::WORLD || channel > ChatChannel::WHISPER) {
+        plr->Send(kMsgServerError, "{\"error\":\"invalid_chat\"}");
+        return;
+    }
+    bool sent = world_chan_->Send(channel, plr->PlayerId(), content,
+                                   get_int("target_id"), 0);
+    if (!sent) {
+        plr->Send(kMsgServerError, "{\"error\":\"chat_failed\"}");
+        return;
+    }
+}
+
+void GameService::DispatchGuild_(PlayerActor::Ptr plr, const char* payload, size_t len) {
+    (void)len;
+    auto get_str = [&](const char* key) -> std::string {
+        std::string kv = "\"" + std::string(key) + "\":\"";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return {};
+        p += kv.size();
+        auto end = std::string(payload, len).find('"', p);
+        if (end == std::string::npos) return {};
+        return std::string(payload + p, end - p);
+    };
+    auto get_int = [&](const char* key) -> int32_t {
+        std::string kv = "\"" + std::string(key) + "\":";
+        auto p = std::string(payload, len).find(kv);
+        if (p == std::string::npos) return 0;
+        try { return std::stoi(std::string(payload, len).substr(p + kv.size())); }
+        catch (...) { return 0; }
+    };
+    int32_t action = get_int("action"); // 0=Create 1=Join 2=Leave 3=List
+    std::string result;
+    switch (action) {
+        case 0: { // Create guild
+            std::string name = get_str("name");
+            if (name.empty()) { result = "{\"error\":\"empty_name\"}"; break; }
+            int32_t gid = guild_mgr_->CreateGuild(plr, name);
+            if (gid <= 0) { result = "{\"error\":\"create_failed\"}"; break; }
+            result = ("{\"action\":\"create\",\"guild_id\":" + std::to_string(gid) +
+                      ",\"name\":\"" + name + "\"}");
+            break;
+        }
+        case 1: { // Join guild
+            int32_t guild_id = get_int("guild_id");
+            if (guild_id <= 0) { result = "{\"error\":\"invalid_guild_id\"}"; break; }
+            bool ok = guild_mgr_->JoinGuild(plr, guild_id);
+            result = ok ? "{\"action\":\"join\",\"guild_id\":" + std::to_string(guild_id) + "}"
+                        : "{\"error\":\"join_failed\"}";
+            break;
+        }
+        case 2: { // Leave guild
+            guild_mgr_->LeaveGuild(plr);
+            result = "{\"action\":\"leave\"}";
+            break;
+        }
+        case 3: { // List all guilds
+            auto list = guild_mgr_->ListAllGuilds();
+            std::string parts;
+            for (auto& g : list)
+                parts += ("{\"id\":" + std::to_string(g->guild_id) +
+                          ",\"name\":\"" + g->name + "\"},");
+            if (!parts.empty()) parts.pop_back();
+            result = ("{\"action\":\"list\",\"guilds\":[") + parts + "]}";
+            break;
+        }
+        default:
+            result = "{\"error\":\"unknown_guild_action\"}";
+            break;
+    }
+    plr->Send(kMsgServerGuildNotice, result);
 }
 
 void GameService::DispatchPickup_(PlayerActor::Ptr plr, const char* payload, size_t len) {
     (void)payload; (void)len;
     int picked = drop_mgr_->PickUp(plr, 2);
-    plr->Send(kMsgGameToGate,
-        ("{\"type\":\"pickup\",\"picked\":" + std::to_string(picked) + "}").c_str(),
-        40);
+    plr->Send(kMsgServerDropNotify,
+        ("{\"picked\":" + std::to_string(picked) + "}").c_str(), 24);
 }
 
 void GameService::DispatchSkill_(PlayerActor::Ptr plr, const char* payload, size_t len) {
     (void)plr; (void)payload; (void)len;
-    plr->Send(kMsgGameToGate, "{\"type\":\"skill\",\"status\":\"ok\"}", 33);
+    plr->Send(kMsgServerDamageResult, "{\"type\":\"skill\",\"status\":\"ok\"}", 33);
 }
 
 // ── 玩家管理 ──────────────────────────────────────────────────────

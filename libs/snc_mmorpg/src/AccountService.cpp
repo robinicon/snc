@@ -34,7 +34,7 @@ bool AccountService::CheckUserExists_(const std::string& username) {
 }
 
 std::string AccountService::HashPassword_(const std::string& pwd) const {
-    return auth::HashSha256(pwd);
+    return auth::HashPasswordWithSalt(pwd);
 }
 
 bool AccountService::Register(const RegisterReq& req, std::string& out_user_id) {
@@ -54,7 +54,14 @@ LoginResp AccountService::Login(const LoginReq& req) {
                              + EscapeSql_(req.username) + "'");
     if (result.rows.empty()) { resp.error = "user_not_found"; return resp; }
     std::string stored_hash = result.rows[0]["password_hash"].str_val;
-    std::string calc_hash   = HashPassword_(req.password);
+    // Extract salt from stored hash and recompute to verify password
+    std::string salt = auth::ExtractSalt_(stored_hash);
+    std::string calc_hash;
+    if (!salt.empty()) {
+        calc_hash = salt + "$" + auth::HashSha256(salt + req.password);
+    } else {
+        calc_hash = auth::HashPasswordWithSalt(req.password);
+    }
     if (stored_hash != calc_hash) { resp.error = "wrong_password"; return resp; }
 
     resp.success = true;

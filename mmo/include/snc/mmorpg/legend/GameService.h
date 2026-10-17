@@ -57,8 +57,8 @@ static constexpr int32_t kMsgGameToGate    = 0x2100;
 static constexpr int32_t kMsgGameRegToMaster = 0x3000;
 static constexpr int32_t kMsgGameHbToMaster  = 0x3001;
 
-// ── 客户�?�?Game 服业务消�?ID（Gate 转发）───────────────────────
-// 0x1100 ~ 0x11FF：移�?攻击/NPC/聊天等客户端输入
+// ── 客户端→Game 服业务消息 ID（Gate 转发）───────────────────────
+// 0x1100 ~ 0x11FF：移动/攻击/NPC/聊天等客户端输入
 static constexpr int32_t kMsgClientMove       = 0x1100;
 static constexpr int32_t kMsgClientAttack     = 0x1101;
 static constexpr int32_t kMsgClientNPCDialog  = 0x1102;
@@ -66,6 +66,26 @@ static constexpr int32_t kMsgClientChat       = 0x1103;
 static constexpr int32_t kMsgClientPickup     = 0x1104;
 static constexpr int32_t kMsgClientSkill      = 0x1105;
 static constexpr int32_t kMsgClientGuildReq   = 0x1106;
+
+// ── Game 服→客户端业务消息 ID（推送给 Gate，由 Gate 转发给客户端）──
+// 0x1200 ~ 0x12FF：服务器主动推送的响应和状态同步
+static constexpr int32_t kMsgServerPlayerSync    = 0x1200; // 玩家属性全量同步
+static constexpr int32_t kMsgServerPosSync       = 0x1201; // 实体位置批量同步
+static constexpr int32_t kMsgServerDamageResult  = 0x1202; // 伤害结果
+static constexpr int32_t kMsgServerDeathNotify   = 0x1203; // 死亡通知
+static constexpr int32_t kMsgServerDropNotify    = 0x1204; // 掉落物刷新
+static constexpr int32_t kMsgServerLevelUp       = 0x1205; // 升级通知
+static constexpr int32_t kMsgServerChatBroadcast = 0x1206; // 聊天广播
+static constexpr int32_t kMsgServerGuildNotice   = 0x1207; // 行会通知
+static constexpr int32_t kMsgServerSceneEnter    = 0x1208; // 进入场景
+static constexpr int32_t kMsgServerSceneLeave    = 0x1209; // 离开场景
+static constexpr int32_t kMsgServerMoveResponse  = 0x120A; // 移动响应（确认/拒绝）
+static constexpr int32_t kMsgServerError         = 0x120B; // 通用错误提示
+
+// ── 认证消息 ID（客户端→服务端 / 服务端→客户端）────────────────
+static constexpr int32_t kMsgAuthLogin     = 0x1000; // 登录请求（含 JWT）
+static constexpr int32_t kMsgAuthResponse  = 0x1001; // 登录结果（含玩家初始数据）
+static constexpr int32_t kMsgKeepAlive     = 0x1002; // 应用层心跳（备用）
 
 // ══════════════════════════════════════════════════════════════════
 // GameService（传奇版�?
@@ -126,6 +146,7 @@ private:
     void DispatchChat_(PlayerActor::Ptr plr, const char* payload, size_t len);
     void DispatchPickup_(PlayerActor::Ptr plr, const char* payload, size_t len);
     void DispatchSkill_(PlayerActor::Ptr plr, const char* payload, size_t len);
+    void DispatchGuild_(PlayerActor::Ptr plr, const char* payload, size_t len);
 
     // ── 成员 ───────────────────────────────────────────────────
     rpc::RpcClient::Ptr                 master_rpc_;

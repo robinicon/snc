@@ -7,39 +7,12 @@
 
 #include "snc/base/Common.h"
 #include "snc/core/EventLoop.h"
-#include "snc/core/TcpConnection.h"
 #include "snc/core/MessageQueue.h"
 #include "snc/core/WorkerPool.h"
 #include "snc/base/Log.h"
-#include <cstring>
-#include <algorithm>
-#include <functional>
 
 namespace snc::core
 {
-
-// ═════════════════════════════════════════════════════════════════
-// Shared helper — iterates a snapshot of connections under lock,
-// then dispatches to fn without holding the lock.
-// Common to ProcessHeartbeatTickAll and ProcessRpcPruneAll across
-// all three platform implementations.
-// ═════════════════════════════════════════════════════════════════
-template<typename ConnMap>
-static void ProcessTickAll_(const ConnMap& connections, std::mutex& connMutex,
-    std::function<void(std::shared_ptr<TcpConnection>)> fn)
-{
-    std::vector<IConnection::Ptr> conns;
-    {
-        std::lock_guard<std::mutex> lock(connMutex);
-        for (auto& [fd, conn] : connections)
-            conns.push_back(conn);
-    }
-    for (auto& c : conns)
-    {
-        auto tcpConn = std::dynamic_pointer_cast<TcpConnection>(c);
-        if (tcpConn) fn(tcpConn);
-    }
-}
 
 #ifdef SNC_PLATFORM_WINDOWS
 
@@ -156,14 +129,26 @@ void EventLoopIOCP::Wakeup()
 
 void EventLoopIOCP::ProcessHeartbeatTickAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->ProcessHeartbeatTick(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->ProcessHeartbeatTick();
 }
 
 void EventLoopIOCP::ProcessRpcPruneAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->InvokePruneExpired(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->InvokePruneExpired();
 }
 
 #endif // SNC_PLATFORM_WINDOWS
@@ -300,14 +285,26 @@ void EventLoopEpoll::Wakeup()
 
 void EventLoopEpoll::ProcessHeartbeatTickAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->ProcessHeartbeatTick(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->ProcessHeartbeatTick();
 }
 
 void EventLoopEpoll::ProcessRpcPruneAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->InvokePruneExpired(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->InvokePruneExpired();
 }
 
 #endif // SNC_PLATFORM_LINUX
@@ -448,14 +445,26 @@ void EventLoopKqueue::Wakeup()
 
 void EventLoopKqueue::ProcessHeartbeatTickAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->ProcessHeartbeatTick(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->ProcessHeartbeatTick();
 }
 
 void EventLoopKqueue::ProcessRpcPruneAll()
 {
-    ProcessTickAll_(connections_, connMutex_,
-        [](std::shared_ptr<TcpConnection> c) { c->InvokePruneExpired(); });
+    std::vector<IConnection::Ptr> conns;
+    {
+        std::lock_guard<std::mutex> lock(connMutex_);
+        for (auto& [fd, conn] : connections_)
+            conns.push_back(conn);
+    }
+    for (auto& c : conns)
+        c->InvokePruneExpired();
 }
 
 #endif // SNC_PLATFORM_MACOS

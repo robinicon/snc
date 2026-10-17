@@ -34,6 +34,9 @@ public:
     virtual void SetAcceptSock(SocketWrap sock) {}
     virtual void SetAcceptCallback(std::function<void()> cb) {}
     virtual void SetMessageDispatchFn(std::function<void(Msg::Ptr)> fn) {}
+    // Heartbeat / RPC pruning — default no-ops, safe to call through IEventLoop*
+    virtual void ProcessHeartbeatTickAll() {}
+    virtual void ProcessRpcPruneAll() {}
 };
 
 } // namespace core

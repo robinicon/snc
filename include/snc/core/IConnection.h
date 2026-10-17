@@ -34,6 +34,21 @@ public:
     virtual void SetHeartbeatCallback(HeartbeatCallback cb) {}
     virtual void SetPruneExpired(PruneExpiredFn fn) {}
     virtual EntityHandle<IConnection> GetConnHandle() { return EntityHandle<IConnection>{}; }
+
+    // Phase D – WorkerPool 直接分发（可选，子类按需覆盖）
+    // 注意：WorkerDispatchFn 在类体外定义，此处用完整类型。
+    virtual void SetWorkerDispatchFn(
+        std::function<void(EntityHandle<IConnection>, Msg::Ptr)> /*fn*/,
+        WorkerPool* /*pool*/) {}
+    virtual WorkerPool* GetWorkerPool() const { return nullptr; }
+
+    // 心跳管理钩子（由事件循环周期性调用；各后端可自由覆盖）
+    virtual void StartHeartbeat(long long /*intervalMs*/, long long /*pongTimeoutMs*/, int /*maxMissed*/) {}
+    virtual void ProcessHeartbeatTick() {}
+    virtual void InvokePruneExpired() {}
+
+    // Phase C3 – 背压查询
+    virtual bool IsBackpressuring() const { return false; }
 };
 
 // WorkerDispatchFn must be defined AFTER the IConnection class body so that

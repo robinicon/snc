@@ -7,6 +7,8 @@
 #include <condition_variable>
 #include <vector>
 #include <atomic>
+#include <chrono>
+#include "snc/base/Log.h"
 
 namespace snc {
 namespace core {
@@ -33,7 +35,18 @@ public:
             stop_ = true;
         }
         cv_.notify_all();
-        for (auto& t : workers_) t.join();
+        // Wait up to 5 seconds for workers to finish
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        for (auto& t : workers_) {
+            if (t.joinable()) {
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    SNC_LOG_WARN("workerpool", "Worker thread did not stop in time, detaching");
+                    t.detach();
+                } else {
+                    t.join();
+                }
+            }
+        }
         {
             std::lock_guard<std::mutex> lk(mtx_);
             joined_ = true;

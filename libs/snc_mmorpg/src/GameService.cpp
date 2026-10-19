@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file GameService.cpp
 /// @brief Game 服 — 游戏逻辑、Actor 管理、地图、心跳、优雅停机（stub 实现）。
 
@@ -138,7 +139,13 @@ void GameService::HeartbeatLoop_() {
             oss << "{\"service_name\":\"" << service_name_
                 << "\",\"type\":0,\"player_count\":" << players_.size()
                 << ",\"map_count\":3,\"uptime_secs\":0}";
-            SNC_LOG_DEBUG("game", "Heartbeat sent: %s", oss.str().c_str());
+            if (master_rpc_) {
+                master_rpc_->Call(0x0FFF, oss.str().c_str(), oss.str().size(),
+                    [](rpc::RpcError, const uint8_t*, size_t) { /* heartbeat response ignored */ });
+                SNC_LOG_DEBUG("game", "Heartbeat sent to master: %s", oss.str().c_str());
+            } else {
+                SNC_LOG_WARN("game", "master_rpc_ is null — heartbeat skipped");
+            }
         }
     });
 }

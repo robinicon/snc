@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // MySQL database adapter — stub + optional real connector.
 //
 // Provides a MySQL backend for the IDatabase interface, with a stub
@@ -15,6 +16,7 @@
 #include <cstdio>
 #include <sstream>
 #include "snc/db/Database.h"
+#include "snc/db/StubDatabase.h"
 #include "snc/mmorpg/legend/PlayerActor.h"
 
 namespace snc {

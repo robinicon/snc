@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // AsioEventLoop — Boost.Asio io_context based event loop implementation
 //
 // Replaces the three platform-specific EventLoop* classes with a single

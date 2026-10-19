@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file EntityMgr.cpp
 /// @brief 实体管理器实现
 

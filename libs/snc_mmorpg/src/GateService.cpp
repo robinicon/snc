@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file GateService.cpp
 /// @brief Gate 服 — TCP/WebSocket 接入、JWT 本地验签、消息路由。
 
@@ -192,6 +193,11 @@ GateService::Conn::Ptr GateService::ConnectToGameServer_(const std::string& host
     sock.SetNoDelay();
     sock.SetNonBlocking();
     auto conn = std::make_shared<core::TcpConnection>(std::move(sock));
+    if (!event_loop_) {
+        SNC_LOG_ERROR("gate", "Event loop is null — cannot add connection to game server %s:%d",
+                      host.c_str(), port);
+        return nullptr;
+    }
     event_loop_->AddConnection(conn);
     return conn;
 }

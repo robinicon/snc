@@ -1,4 +1,5 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+#pragma once
 
 #include <string>
 #include "snc/base/Common.h"

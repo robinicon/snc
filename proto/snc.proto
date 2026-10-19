@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Licensed under the MIT License — see LICENSE for details.
+//
 // snc.proto — Example protobuf schema for the SNC game-microservice framework.
 //
 // NOTE: This file is for reference/documentation only.

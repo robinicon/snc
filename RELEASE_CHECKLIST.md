@@ -50,13 +50,13 @@
 | 3.6 | `KNOWN_ISSUES.md` 存在 | ✅ | 平台限制与安全说明均已记录 |
 | 3.7 | `CONTRIBUTING.md` 存在 | ✅ | |
 | 3.8 | `CODE_OF_CONDUCT.md` 存在 | ✅ | |
-| 3.9 | 教程目录 (`docs/tutorials/`) 与代码一致 | ⚠️ 需核查 | 部分教程可能引用已移除的 API |
+| 3.9 | 教程目录 (`docs/tutorials/`) 与代码一致 | ✅ | 22 篇教程均已核查，与当前代码 API 一致；无引用已移除的 API |
 | 3.10 | `CMakePresets.json` 存在 | ✅ | 4 个预设配置 |
 | 3.11 | `cmake/sncConfig.cmake.in` 存在 | ✅ | `find_package(snc)` 支持 |
 | 3.12 | `.gitignore` 排除编译产物 | ✅ | build/、*.exe、*.lib 等均已排除 |
-| 3.13 | `CODEOWNERS` 文件存在 | ❌ | 缺少项目维护者声明 |
-| 3.14 | Issue/Pull Request 模板存在 | ❌ | `.github/ISSUE_TEMPLATE/` 和 `.github/pull_request_template.md` 缺失 |
-| 3.15 | 项目徽章（如适用）正确 | ✅ | `[![License: MIT]]` 已存在 |
+| 3.13 | `CODEOWNERS` 文件存在 | ✅ | `.github/CODEOWNERS` 已定义模块维护者 |
+| 3.14 | Issue/Pull Request 模板存在 | ✅ | `.github/ISSUE_TEMPLATE/bug_report.md`、`feature_request.md`、`.github/pull_request_template.md` 均已存在 |
+| 3.15 | 项目徽章（如适用）正确 | ✅ | License / CI / vcpkg 徽章均已添加 |
 
 ---
 
@@ -86,18 +86,18 @@
 
 ## 六、非阻塞改进项（可延后）🟢
 
-| # | 项目 | 建议操作 |
-|---|------|----------|
-| B1 | 创建 `.github/workflows/ci.yml` | 在 Windows/Linux/macOS 三个平台自动编译 + 运行测试 |
-| B2 | 创建 `AUTHORS.md` 或补充 `LICENSE` 中作者声明 | 列出主要贡献者 |
-| B3 | 创建 `.github/CODEOWNERS` | 指定各模块维护者 |
-| B4 | 创建 `.github/ISSUE_TEMPLATE/bug_report.md` | Bug 报告模板 |
-| B5 | 创建 `.github/ISSUE_TEMPLATE/feature_request.md` | 功能请求模板 |
-| B6 | 创建 `.github/pull_request_template.md` | PR 模板，要求注明测试覆盖情况 |
-| B7 | 补充跨平台 CI 验证（Linux/macOS） | 目前仅在 Windows MSVC 验证通过 |
-| B8 | 修复 `AuthService.h` 直接 include winsock2.h/windows.h | 改为通过 `snc/base/Common.h` 引入平台符号 |
-| B9 | 实现正确 SHA-256 / HMAC-SHA256（替换占位实现） | 消除 CRYPTO_NOTICE.md 警告；计划后续版本 |
-| B10 | 补充教程 API 一致性核查 | 确保 19 篇教程均与当前代码匹配 |
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| B1 | 创建 `.github/workflows/ci.yml` | ✅ 已完成 | Windows MSVC / Ubuntu GCC / macOS Clang 三平台构建 + 测试 |
+| B2 | 补充 `AUTHORS.md` 贡献者信息 | ✅ 已完成 | 已列出核心贡献团队 |
+| B3 | 创建 `.github/CODEOWNERS` | ✅ 已完成 | 各模块维护者已定义 |
+| B4 | 创建 `.github/ISSUE_TEMPLATE/bug_report.md` | ✅ 已完成 | |
+| B5 | 创建 `.github/ISSUE_TEMPLATE/feature_request.md` | ✅ 已完成 | |
+| B6 | 创建 `.github/pull_request_template.md` | ✅ 已完成 | |
+| B7 | 补充跨平台 CI 验证（Linux/macOS） | ⏳ 待 CI 首次运行后确认 | GitHub Actions 将在首次 push 后自动验证 |
+| B8 | 修复 `AuthService.h` 直接 include winsock2.h/windows.h | ✅ 已通过 Common.h 间接引入 | 平台符号统一通过 `snc/base/Common.h` |
+| B9 | 实现正确 SHA-256 / HMAC-SHA256 | 🔒 计划后续版本 | 需引入经过审计的密码学库，暂保持占位实现 |
+| B10 | 补充教程 API 一致性核查 | ✅ 已完成 | 22 篇教程均已核对，与当前代码一致 |
 
 ---
 

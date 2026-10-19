@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
 project(snc_admin VERSION 1.0.0 LANGUAGES CXX)
 
@@ -11,7 +13,7 @@ add_library(snc_admin STATIC
 
 target_include_directories(snc_admin
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src

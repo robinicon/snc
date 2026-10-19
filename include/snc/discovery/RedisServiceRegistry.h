@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Cross-process service registry using Redis as the backend.
 //
 // Extends the in-memory ServiceRegistry by syncing registration state

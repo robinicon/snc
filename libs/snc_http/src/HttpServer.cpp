@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/http/HttpServer.h"
 
 #include <chrono>

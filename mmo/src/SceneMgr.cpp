@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file SceneMgr.cpp
 /// @brief 场景管理器实现
 

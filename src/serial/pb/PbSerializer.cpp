@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // PbSerializer implementation — stub mode compatible
 #include "snc/serial/pb/PbSerializer.h"
 

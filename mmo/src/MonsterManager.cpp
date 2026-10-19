@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file MonsterManager.cpp
 
 #include "snc/mmorpg/legend/MonsterManager.h"

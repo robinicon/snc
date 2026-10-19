@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_03_game.cpp
 /// @brief 示例 03 — Game 服（传奇版）
 ///

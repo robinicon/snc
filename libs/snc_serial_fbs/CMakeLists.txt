@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
 project(snc_serial_fbs VERSION 1.0.0 LANGUAGES CXX)
 
@@ -14,15 +16,15 @@ endif()
 
 # ── Library ────────────────────────────────────────────────────
 add_library(snc_serial_fbs STATIC
-    ${CMAKE_SOURCE_DIR}/src/serial/fbs/FbsSerializer.cpp
+    ${SNC_ROOT_DIR}/src/serial/fbs/FbsSerializer.cpp
 )
 
 target_include_directories(snc_serial_fbs
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_compile_definitions(snc_serial_fbs PUBLIC

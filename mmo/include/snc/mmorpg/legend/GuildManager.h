@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Licensed under the MIT License — see LICENSE for details.
 #pragma once
 
 /// @file GuildManager.h

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // ServiceRegistry implementation
 #include "snc/discovery/ServiceRegistry.h"
 

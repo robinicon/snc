@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
 // asio/impl/strand.hpp — inline implementation
 #pragma once
 #include "../strand.hpp"

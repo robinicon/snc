@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // snc_admin — Admin HTTP API scaffolding.

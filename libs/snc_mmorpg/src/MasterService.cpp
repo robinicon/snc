@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file MasterService.cpp
 /// @brief Master 服 — 全局服务状态管理、GM 命令分发、健康统计（stub 实现）。
 

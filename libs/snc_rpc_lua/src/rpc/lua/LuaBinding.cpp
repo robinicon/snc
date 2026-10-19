@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // LuaBinding.cpp — Stub implementation (Lua not available)
 // When Lua is found, this file is replaced by the real implementation.
 

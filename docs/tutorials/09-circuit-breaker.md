@@ -4,7 +4,7 @@
 
 ## 概述
 
-`snc_circuit` 模块提供三种组件：
+`snc_gateway` 模块提供三种组件：
 
 | 组件 | 作用 |
 |------|------|
@@ -30,15 +30,15 @@ CLOSED ──(连续失败≥threshold)──> OPEN ──(等待 openTimeout)�
 ### 构造与配置
 
 ```cpp
-#include <snc/circuit/CircuitBreaker.h>
+#include <snc/gateway/CircuitBreaker.h>
 
-snc::circuit::CircuitConfig cfg;
+snc::gateway::CircuitConfig cfg;
 cfg.failureThreshold    = 5;            // 连续失败 5 次触发熔断
 cfg.successThreshold    = 3;            // HALF_OPEN 下连续成功 3 次恢复
 cfg.openTimeout         = std::chrono::seconds(30); // OPEN 状态保持 30 秒
 cfg.maxRequestsInHalfOpen = 1;          // HALF_OPEN 最多允许 1 条探测请求
 
-auto breaker = std::make_shared<snc::circuit::CircuitBreaker>("login_service", cfg);
+auto breaker = std::make_shared<snc::gateway::CircuitBreaker>("login_service", cfg);
 ```
 
 ### 典型用法
@@ -74,10 +74,10 @@ breaker->Reset();                     // 重置为 CLOSED
 令牌桶以固定速率补充令牌，允许短期突发流量（burst），长期维持 `rate` QPS。
 
 ```cpp
-#include <snc/circuit/CircuitBreaker.h>
+#include <snc/gateway/CircuitBreaker.h>
 
 // rate=100 QPS，突发上限=20
-snc::circuit::TokenBucket bucket(100.0, /* burst */ 20);
+snc::gateway::TokenBucket bucket(100.0, /* burst */ 20);
 
 if (bucket.TryAcquire()) {
     // 允许通过
@@ -97,7 +97,7 @@ auto st = bucket.GetStats();   // allowed / rejected / currentTokens
 按服务名统一管理多个熔断器，提供便捷方法，无需手动查找实例。
 
 ```cpp
-auto registry = std::make_shared<snc::circuit::CircuitBreakerRegistry>();
+auto registry = std::make_shared<snc::gateway::CircuitBreakerRegistry>();
 
 // 获取或创建（首次调用自动创建，后续返回已存在实例）
 registry->GetOrCreate("login_service", cfg);
@@ -114,7 +114,7 @@ if (registry->Allow("login_service")) {
 }
 
 // 动态调整配置
-snc::circuit::CircuitConfig strict_cfg;
+snc::gateway::CircuitConfig strict_cfg;
 strict_cfg.failureThreshold = 3;
 registry->Configure("login_service", strict_cfg);
 ```
@@ -122,11 +122,11 @@ registry->Configure("login_service", strict_cfg);
 ## 完整示例：调用远程服务
 
 ```cpp
-#include <snc/circuit/CircuitBreaker.h>
+#include <snc/gateway/CircuitBreaker.h>
 
 class RemoteServiceClient {
 public:
-    RemoteServiceClient(snc::circuit::CircuitBreakerRegistry::Ptr reg)
+    RemoteServiceClient(snc::gateway::CircuitBreakerRegistry::Ptr reg)
         : registry_(reg) {}
 
     std::string CallLogin(const std::string& user) {
@@ -152,7 +152,7 @@ public:
     }
 
 private:
-    snc::circuit::CircuitBreakerRegistry::Ptr registry_;
+    snc::gateway::CircuitBreakerRegistry::Ptr registry_;
 };
 ```
 

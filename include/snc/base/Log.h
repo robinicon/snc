@@ -1,4 +1,9 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024–2026 SNC Project Contributors
+// This source code is subject to the terms of the MIT License.
+// See LICENSE for details.
+
+#pragma once
 
 #include <cstdio>
 #include <cstdarg>
@@ -108,12 +113,25 @@ inline void InitLogger(LogLevel level, const char* filename = nullptr) {
 
 // ── 日志宏 ──────────────────────────────────────────────────────
 // 每个宏自动注入当前函数名作为 tag，便于定位日志来源。
+// 若 Common.h 已定义基础版本，则仅在未定义时才覆盖。
+#ifndef SNC_LOG_TRACE
 #define SNC_LOG_TRACE(...) snc::base::GetLogger().Write(snc::base::LogLevel::TRACE, __FUNCTION__, __VA_ARGS__)
+#endif
+#ifndef SNC_LOG_DEBUG
 #define SNC_LOG_DEBUG(...) snc::base::GetLogger().Write(snc::base::LogLevel::DEBUG, __FUNCTION__, __VA_ARGS__)
+#endif
+#ifndef SNC_LOG_INFO
 #define SNC_LOG_INFO(...)  snc::base::GetLogger().Write(snc::base::LogLevel::INFO,  __FUNCTION__, __VA_ARGS__)
+#endif
+#ifndef SNC_LOG_WARN
 #define SNC_LOG_WARN(...)  snc::base::GetLogger().Write(snc::base::LogLevel::WARN,  __FUNCTION__, __VA_ARGS__)
+#endif
+#ifndef SNC_LOG_ERROR
 #define SNC_LOG_ERROR(...) snc::base::GetLogger().Write(snc::base::LogLevel::ERR,   __FUNCTION__, __VA_ARGS__)
+#endif
+#ifndef SNC_LOG_FATAL
 #define SNC_LOG_FATAL(...) snc::base::GetLogger().Write(snc::base::LogLevel::FATAL, __FUNCTION__, __VA_ARGS__)
+#endif
 
 } // namespace base
 } // namespace snc

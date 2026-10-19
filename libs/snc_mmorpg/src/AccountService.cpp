@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file AccountService.cpp
 /// @brief 账号服 — HTTP 注册/登录 + JWT 签发（stub 实现）。
 
@@ -5,6 +6,7 @@
 #include "snc/http/HttpServer.h"
 #include "snc/auth/AuthService.h"
 #include "snc/db/Database.h"
+#include "snc/db/StubDatabase.h"
 #include "snc/base/Log.h"
 
 #include <algorithm>

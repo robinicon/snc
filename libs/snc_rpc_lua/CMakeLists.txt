@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
 project(snc_rpc_lua VERSION 1.0.0 LANGUAGES CXX)
 
@@ -53,13 +55,12 @@ if(LUA_LIBRARY AND LUA_INCLUDE_DIR)
     message(STATUS "snc_rpc_lua: Lua found — include=${LUA_INCLUDE_DIR}, lib=${LUA_LIBRARY}")
     set(SNC_LUA_AVAILABLE TRUE)
     add_library(snc_rpc_lua STATIC
-        src/rpc/lua/LuaBinding.cpp
-        src/rpc/lua/LuaRouterApi.cpp
-        src/rpc/lua/LuaRpcApi.cpp
+        ${SNC_ROOT_DIR}/src/rpc/lua/LuaBinding.cpp
+        ${SNC_ROOT_DIR}/src/rpc/lua/LuaRouterApi.cpp
     )
     target_include_directories(snc_rpc_lua
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
             $<BUILD_INTERFACE:${LUA_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:include>
         PRIVATE
@@ -80,13 +81,12 @@ else()
     message(WARNING "snc_rpc_lua: Lua not found. Building stub-only library.")
     message(STATUS "  To enable Lua support, set -DLUA_ROOT=/path/to/lua")
     add_library(snc_rpc_lua STATIC
-        src/rpc/lua/LuaBinding.cpp
-        src/rpc/lua/LuaRouterApi.cpp
-        src/rpc/lua/LuaRpcApi.cpp
+        ${SNC_ROOT_DIR}/src/rpc/lua/LuaBinding.cpp
+        ${SNC_ROOT_DIR}/src/rpc/lua/LuaRouterApi.cpp
     )
     target_include_directories(snc_rpc_lua
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
             $<INSTALL_INTERFACE:include>
     )
     target_link_libraries(snc_rpc_lua PUBLIC snc_rpc)

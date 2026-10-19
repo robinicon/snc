@@ -1,6 +1,9 @@
-// asio/basic_string_view.hpp
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
-#include <string_view>
-namespace asio {
-using string_view = std::string_view;
-}
+
+#include "basic_string_view.hpp"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Redis bridge for cross-process service discovery.
 //
 // Stub mode (default): all methods are no-ops. Use the in-memory

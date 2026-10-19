@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // snc_http — 轻量级 HTTP 服务器模块
@@ -27,6 +28,8 @@
 #include "snc/base/Common.h"
 
 #ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
 // windows.h 已通过 Common.h 引入；取消定义以下宏以避免与 HttpMethod 枚举冲突
 #ifdef GET
 #undef GET

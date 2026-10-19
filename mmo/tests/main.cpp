@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file main.cpp
 /// @brief 传奇版测试入口
 

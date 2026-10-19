@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/rpc/lua/LuaBinding.h"
 #include "snc/rpc/lua/LuaRpcApi.h"
 

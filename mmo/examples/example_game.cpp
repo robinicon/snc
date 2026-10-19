@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_game.cpp
 /// @brief 传奇版 Game 服单进程演示 — 场景/实体/战斗/掉落基础流程
 
@@ -8,6 +9,7 @@
 #include "snc/core/Msg.h"
 
 #include <iostream>
+#include <cstdlib>
 #include <thread>
 #include <chrono>
 
@@ -21,7 +23,13 @@ int main() {
 
     // 1. 创建必要的基础组件（本示例不依赖真实 Master）
     auto registry = snc::discovery::ServiceRegistry::Create();
-    auth::JwtConfig jwtCfg{"legend-mmo-secret-key-2024-for-demo-use-only!!", 7200, "snc", "HS256"};
+    const char* jwtEnv = std::getenv("SNC_JWT_SECRET");
+    if (!jwtEnv || jwtEnv[0] == '\0') {
+        SNC_LOG_ERROR("demo", "SNC_JWT_SECRET environment variable not set. "
+                       "Please set it to a ≥32-byte random string before running.");
+        return 1;
+    }
+    auth::JwtConfig jwtCfg{jwtEnv, 7200, "snc", "HS256"};
     rpc::RpcClient::Ptr null_master; // 空 Master 引用（演示用）
 
     // 2. 创建 GameService

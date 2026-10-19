@@ -1,4 +1,5 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+#pragma once
 
 #include <memory>
 #include <atomic>

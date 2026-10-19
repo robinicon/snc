@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // example_04_gate.cpp — Gate 服完整示例
 //
 // 编译：cmake --preset=normal -DBUILD_EXAMPLES=ON && cmake --build --config Release
@@ -13,6 +14,7 @@
 #include "snc/discovery/ServiceRegistry.h"
 #include "snc/auth/AuthService.h"
 #include "snc/base/Log.h"
+#include "common/config.h"
 
 #include <csignal>
 #include <iostream>
@@ -50,12 +52,9 @@ int main(int argc, char* argv[]) {
     const char*   master_host = (argc > 3) ? argv[3] : "127.0.0.1";
     uint16_t      master_port = (argc > 4) ? static_cast<uint16_t>(std::stoi(argv[4])) : 9000;
     std::string   jwt_secret  = (argc > 5) ? argv[5]
-        : []() -> std::string {
-              const char* env = std::getenv("SNC_JWT_SECRET");
-              return (env && env[0]) ? env : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
-          }();
+        : snc_examples::JwtSecret();
 
-    if (!std::getenv("SNC_JWT_SECRET")) {
+    if (argc <= 5 && !snc_examples::JwtSecretFromEnv()) {
         SNC_LOG_WARN("Gate", "Using default JWT secret — set SNC_JWT_SECRET in production");
     }
 

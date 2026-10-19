@@ -1,42 +1,37 @@
-// asio/buffer.hpp
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
+
 #include <cstddef>
-#include <cstring>
-#include <vector>
+#include <cstdint>
+#include "basic_string_view.hpp"
 
 namespace asio {
 
-class mutable_buffer {
+class buffer {
 public:
-    mutable_buffer(void* data, std::size_t n) : data_(data), size_(n) {}
-    void*          data()    const noexcept { return data_; }
-    std::size_t    size()    const noexcept { return size_; }
+    buffer(void *data, size_t size);
+    buffer(const void *data, size_t size);
+    void *data();
+    const void *data() const;
+    size_t size() const;
 private:
-    void*          data_;
-    std::size_t    size_;
+    void *data_;
+    size_t size_;
 };
 
-inline mutable_buffer buffer(void* data, std::size_t n) {
-    return mutable_buffer(data, n);
-}
-inline mutable_buffer buffer(void* data, std::size_t n, std::size_t max_n) {
-    (void)max_n;
-    return mutable_buffer(data, n);
-}
-inline mutable_buffer buffer(const void* data, std::size_t n) {
-    return mutable_buffer(const_cast<void*>(data), n);
-}
-inline mutable_buffer buffer(std::vector<char>& v) {
-    return mutable_buffer(v.data(), v.size());
-}
-template<std::size_t N>
-inline mutable_buffer buffer(char (&arr)[N]) {
-    return mutable_buffer(arr, N);
-}
+inline buffer::buffer(void *data, size_t size) : data_(data), size_(size) {}
+inline buffer::buffer(const void *data, size_t size) : data_(const_cast<void *>(data)), size_(size) {}
+inline void *buffer::data() { return data_; }
+inline const void *buffer::data() const { return data_; }
+inline size_t buffer::size() const { return size_; }
 
-// Helper: create a single buffer from a char* + size
-inline mutable_buffer make_buffer(char* p, std::size_t n) {
-    return mutable_buffer(p, n);
-}
+inline buffer make_buffer(void *data, size_t size) { return buffer(data, size); }
+inline buffer make_buffer(const void *data, size_t size) { return buffer(data, size); }
+inline buffer buffer_cast(void *p) { return buffer(p, 0); }
 
 } // namespace asio

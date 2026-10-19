@@ -1,89 +1,36 @@
-// asio/strand.hpp — Minimal strand (serial execution guarantee)
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
-// io_context must be included before this header
+
+#include <functional>
+#include <vector>
 
 namespace asio {
 
-// Primary template — strand takes an executor_type
-template<typename Executor = io_context::executor>
+class io_context;
+
+// A strand ensures handlers are executed sequentially.
 class strand {
 public:
-    using executor_type = Executor;
+    explicit strand(io_context &ctx);
+    ~strand();
+    strand(const strand &) = delete;
+    strand &operator=(const strand &) = delete;
 
-    class executor_wrapper {
-    public:
-        executor_wrapper() noexcept = default;
-        explicit executor_wrapper(strand* s) noexcept : str_(s) {}
-        executor_wrapper(const executor_wrapper&) noexcept = default;
-        executor_wrapper& operator=(const executor_wrapper&) noexcept = default;
-        bool operator==(const executor_wrapper& o) const noexcept { return str_ == o.str_; }
-        bool operator!=(const executor_wrapper& o) const noexcept { return str_ != o.str_; }
-        strand* get_strand() const noexcept { return str_; }
-    private:
-        friend class strand;
-        strand* str_ = nullptr;
-    };
+    template <typename Handler>
+    void dispatch(Handler &&h);
 
-    explicit strand(io_context& ctx) : ctx_(ctx) {}
-    explicit strand(const executor_type& ex) : ctx_(*ex.context()) {}
-    ~strand() = default;
-    strand(const strand&) = delete;
-    strand& operator=(const strand&) = delete;
-
-    executor_type get_executor() const noexcept { return executor_type(ctx_.get_executor()); }
-    io_context&   context() noexcept { return ctx_; }
-    const io_context& context() const noexcept { return ctx_; }
-
-    template<typename Fn>
-    void post(Fn fn) {
-        schedule(std::move(fn));
-    }
-
-    template<typename Fn>
-    auto wrap(Fn fn) {
-        return [this, fn = std::move(fn)](auto&&... args) mutable {
-            using decay_fn = std::decay_t<Fn>;
-            post([fn = std::move(fn),
-                  tuple = std::make_tuple(std::forward<decltype(args)>(args)...)]() mutable {
-                std::apply(fn, std::move(tuple));
-            });
-        };
-    }
-
-    template<typename Fn>
-    void dispatch(Fn fn) {
-        if (ctx_.is_running())
-            schedule(std::move(fn));
-        else
-            ctx_.impl_post_unlocked_(std::move(fn));
-    }
-
-    template<typename Fn>
-    void execute(Fn fn) {
-        if (ctx_.is_running())
-            schedule(std::move(fn));
-        else
-            std::move(fn)();
-    }
+    template <typename Handler>
+    void post(Handler &&h);
 
 private:
-    template<typename Fn>
-    void schedule(Fn fn) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        ++pending_;
-        ctx_.post([this, fn = std::move(fn)]() mutable {
-            fn();
-            std::lock_guard<std::mutex> lock(mutex_);
-            --pending_;
-            if (pending_ == 0 && !queue_.empty())
-                ctx_.wakeup_from_strand_();
-        });
-    }
-
-    std::mutex                              mutex_;
-    std::atomic<int>                        pending_{0};
-    std::queue<std::function<void()>>       queue_;
-    io_context&                             ctx_;
+    io_context &ctx_;
+    std::vector<std::function<void()>> pending_;
+    bool running_ = false;
 };
 
 } // namespace asio

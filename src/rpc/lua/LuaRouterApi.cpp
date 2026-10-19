@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/rpc/lua/LuaRouterApi.h"
 
 #ifdef SNC_LUA_AVAILABLE

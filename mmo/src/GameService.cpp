@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file GameService.cpp（传奇版增强实现）
 
 #include "snc/mmorpg/legend/GameService.h"

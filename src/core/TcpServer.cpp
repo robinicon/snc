@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/core/TcpServer.h"
 #include "snc/base/Log.h"
 

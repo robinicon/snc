@@ -1,8 +1,30 @@
 # SNC — 服务器网络组件库
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/snc-project/snc/actions/workflows/ci.yml/badge.svg)](https://github.com/snc-project/snc/actions)
+[![vcpkg](https://img.shields.io/badge/vcpkg-available-blue.svg)](vcpkg.json)
 
 适用于游戏服务器的 C++17 微服务网络框架。
+
+## 功能与平台支持
+
+| 功能 | 默认启用 | 说明 |
+|------|----------|------|
+| 异步 RPC | ✅ | 基于序列号的客户端/服务端 |
+| 事件循环 | ✅ | Windows: select, Linux: epoll, macOS: kqueue |
+| JWT 认证 | ⚠️ | 占位实现，不可用于生产；见 CRYPTO_NOTICE.md |
+| HTTP 服务器 | ✅ | 轻量路由 + 中间件链 |
+| Admin API | ✅ | 回调注入式管理接口 |
+| Lua 脚本桥接 | ⚠️ | 需安装 Lua 5.4 / LuaJIT |
+| Protobuf / FlatBuffers | ❌ | 默认 stub，需显式开启 |
+| Redis 后端 | ❌ | 默认内存 stub，需 hiredis |
+| WebSocket 网关 | ❌ | RFC 6455 |
+
+| 平台 | 状态 | 构建工具 |
+|------|------|----------|
+| Windows (MSVC 2019+) | ✅ 完全支持 | Visual Studio 生成器 / Ninja |
+| Linux (GCC 8+ / Clang 7+) | ✅ 完全支持 | Ninja / Makefiles |
+| macOS (Clang) | ✅ 完全支持 | Ninja / Makefiles |
 
 ## 概述
 
@@ -12,9 +34,8 @@ SNC 提供了一套分层设计的库，覆盖从底层 TCP I/O 到上层 RPC、
 snc_base      — 日志、数据结构、线程原语
 snc_core      — 事件循环（IOCP/epoll/kqueue）、TcpConnection、消息路由
 snc_rpc       — 异步 RPC 客户端/服务端、Entity 句柄管理
-snc_circuit   — 熔断器（CLOSED/OPEN/HALF_OPEN）+ 令牌桶限流器
+snc_gateway   — 集群网关、负载均衡、熔断器（CLOSED/OPEN/HALF_OPEN）+ 令牌桶限流器
 snc_discovery — 内存态 / Redis 后端服务注册表
-snc_gateway   — 集群网关，负载均衡转发，集成熔断器
 snc_monitor   — 运行时指标（I/O 空闲统计、反压检测、Lua 阻塞时间）
 snc_rpc_lua   — Lua 脚本桥接，支持热重载游戏逻辑
 snc_serial_pb — Protobuf 序列化适配器（默认 stub 模式）
@@ -65,6 +86,9 @@ snc_db        — 数据库适配层，内置 StubDatabase 用于测试
 | [17 - 账号服](docs/tutorials/17-account-service.md) | AccountService：HTTP 注册/登录、JWT 签发、Gate 本地验签 |
 | [18 - WorkerPool](docs/tutorials/18-worker-pool.md) | 工作线程池：IO 与业务逻辑分离、消息分派 |
 | [19 - Actor 生命周期](docs/tutorials/19-actor-lifecycle.md) | PlayerActor 生命周期管理：登录→在线→踢出→析构，weak_ptr 跨线程安全访问 |
+| [20 - 最小 TCP 服务器](docs/tutorials/20-minimal-tcp-server.md) | 从零构建回显服务器：EventLoop + Acceptor + TcpConnection |
+| [21 - 完整单服集成](docs/tutorials/21-single-server-integration.md) | Account + Master + Game + Gate 单进程集成，JWT 统一配置 |
+| [22 - 传奇版概览](docs/tutorials/22-legend-overview.md) | mmo/ 传奇 MMORPG 扩展：SceneMgr、战斗系统、NPC/怪物/行会 |
 
 ## 编译构建
 
@@ -155,9 +179,7 @@ cmake --build --preset=full-ninja
 │  snc_auth     — JWT 签名 / 验签                 │
 │  snc_websocket — WebSocket 网关                  │
 ├─────────────────────────────────────────────────┤
-│  snc_gateway  — 集群网关、负载均衡                │
-│  snc_discovery — 服务注册表                      │
-│  snc_circuit  — 熔断器                           │
+│  snc_gateway  — 集群网关、负载均衡、熔断器          │
 ├─────────────────────────────────────────────────┤
 │  snc_rpc      — RPC 客户端 / 服务端              │
 ├─────────────────────────────────────────────────┤
@@ -229,14 +251,14 @@ client->Call(kLoginMsgId, payload.c_str(), payload.size(),
 ### 熔断器
 
 ```cpp
-#include "snc/circuit/CircuitBreaker.h"
+#include "snc/gateway/CircuitBreaker.h"
 
-circuit::CircuitConfig cfg;
+gateway::CircuitConfig cfg;
 cfg.failureThreshold  = 5;   // 连续失败 5 次触发熔断
 cfg.openTimeout       = std::chrono::seconds(30);
 cfg.successThreshold  = 3;
 
-auto breaker = std::make_shared<circuit::CircuitBreaker>("my_service", cfg);
+auto breaker = std::make_shared<gateway::CircuitBreaker>("my_service", cfg);
 
 if (breaker->Allow()) {
     // 允许请求，执行业务逻辑
@@ -299,7 +321,6 @@ snc/
 │   ├── snc_auth/
 │   ├── snc_admin/
 │   ├── snc_websocket/
-│   ├── snc_circuit/
 │   ├── snc_discovery/
 │   ├── snc_gateway/
 │   ├── snc_monitor/
@@ -312,9 +333,9 @@ snc/
 ├── mmo/                    # Legend MMO 子模块
 ├── examples/               # 示例代码
 ├── proto/                  # Protobuf 定义文件
-├── tests/                  # 单元测试（自包含 Catch2-like 测试框架）
+├── tests/                  # 单元测试（vendored doctest，MIT 许可证）
 ├── docs/
-│   ├── tutorials/          # 入门教程（01~19）
+│   ├── tutorials/          # 入门教程（01~22）
 │   ├── modules/            # 模块详细文档
 │   └── design/             # 架构设计文档
 └── thirdparty/             # 第三方头文件

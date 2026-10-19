@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_05_world.cpp
 /// @brief 示例 05 — World 服（跨服场景管理 + 场景锁状态机）
 ///

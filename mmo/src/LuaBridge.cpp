@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file LuaBridge.cpp
 /// @brief LuaBridge 实现：注册 metatable，push/check C++ 对象
 ///

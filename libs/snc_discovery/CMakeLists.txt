@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
 project(snc_discovery VERSION 1.0.0 LANGUAGES CXX)
 
@@ -6,12 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── Library (header-only, but we create a static lib for linking consistency) ──
 add_library(snc_discovery STATIC
-    ${CMAKE_SOURCE_DIR}/src/discovery/ServiceRegistry.cpp
+    ${SNC_ROOT_DIR}/src/discovery/ServiceRegistry.cpp
 )
 
 target_include_directories(snc_discovery
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 

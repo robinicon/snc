@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // SNC - Top-level unified header for the core library.
 //
 // Include this file to pull in all base library functionality.

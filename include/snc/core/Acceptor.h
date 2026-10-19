@@ -1,5 +1,7 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+#pragma once
 
+#include "snc/base/Common.h"
 #include <functional>
 #ifdef _WIN32
 #include <ws2tcpip.h>

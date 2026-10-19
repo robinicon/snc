@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024–2026 SNC Project Contributors
+// This source code is subject to the terms of the MIT License.
+// See LICENSE for details.
+
 // EntityHandle — 跨线程安全引用实体（连接/玩家）的封装。
 //
 // 解决场景：IO 线程销毁了连接对象，但 Worker 线程正在处理该连接的任务，

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file CombatSystem.cpp
 
 #include "snc/mmorpg/legend/CombatSystem.h"

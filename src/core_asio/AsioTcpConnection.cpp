@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // AsioTcpConnection — Boost.Asio strand-safe async TCP connection implementation.
 //
 // Replaces the synchronous recv/send model of TcpConnection with:

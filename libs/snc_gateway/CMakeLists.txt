@@ -1,13 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
 project(snc_gateway VERSION 1.0.0 LANGUAGES CXX)
 
-# Header-only library
-add_library(snc_gateway INTERFACE)
+# Static library: ClusterGateway with CircuitBreaker (moved from snc_circuit)
+add_library(snc_gateway
+    src/ClusterGateway.cpp
+)
 
 target_include_directories(snc_gateway
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    PUBLIC
+        $<BUILD_INTERFACE:${SNC_ROOT_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(snc_gateway INTERFACE snc_discovery snc_circuit snc_rpc snc_base)
+target_link_libraries(snc_gateway
+    PRIVATE snc_discovery snc_rpc snc_base
+)

@@ -11,7 +11,8 @@
 
 Please do **not** open a public issue for security vulnerabilities.
 
-Report vulnerabilities to: please open a GitHub Security Advisory at https://github.com/[REPO]/security/advisories/new
+Report vulnerabilities via the repository's **Security** tab, or send an email to the project maintainers.
+A GitHub Security Advisory link will be added once the repository is published.
 
 Include:
 - Description of the vulnerability

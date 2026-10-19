@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file WorldService.cpp
 /// @brief World 服 — 跨服场景管理 + 场景锁状态机（stub 实现）。
 

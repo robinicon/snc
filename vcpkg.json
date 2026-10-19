@@ -1,0 +1,18 @@
+{
+  "name": "snc",
+  "version": "1.0.1",
+  "description": "SNC — modular C++17 networking and MMORPG server framework",
+  "dependencies": {
+    "cmake": { "version": ">=3.20.0" }
+  },
+  "overrides": {
+    "description": "snc is self-contained; no runtime third-party dependencies required. Enable optional backends via CMake presets.",
+    "features": {
+      "snc_rpc_lua": "Optional Lua scripting bridge — requires 'lua' or 'luajit' vcpkg port",
+      "snc_serial_pb": "Protobuf serialization — requires 'protobuf' vcpkg port",
+      "snc_serial_fbs": "FlatBuffers serialization — requires 'flatbuffers' vcpkg port",
+      "snc_redis": "Redis client — requires 'hiredis' vcpkg port",
+      "snc_crypto_openssl": "Production JWT crypto — requires 'openssl' vcpkg port (replaces placeholder)"
+    }
+  }
+}

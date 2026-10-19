@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file GuildManager.cpp
 
 #include "snc/mmorpg/legend/GuildManager.h"

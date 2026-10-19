@@ -63,6 +63,9 @@ __pycache__/
 
 # Logs and temp files
 *.log
+build_log*.txt
+build_output.txt
+build-verbose.txt
 logs/
 tmp/
 temp/

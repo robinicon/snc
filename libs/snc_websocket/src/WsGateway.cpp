@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/ws/WsConnection.h"
 #include "snc/base/Common.h"
 #include <chrono>

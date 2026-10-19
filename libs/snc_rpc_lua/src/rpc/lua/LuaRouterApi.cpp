@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // LuaRouterApi.cpp — Stub implementation (Lua not available)
 
 #include "snc/rpc/lua/LuaRouterApi.h"

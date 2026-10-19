@@ -1,16 +1,13 @@
-// asio/basic_io_object.hpp
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
-#include "io_context.hpp"
+
 namespace asio {
-template<typename IoObjectService>
-class basic_io_object {
-public:
-    using service_type = IoObjectService;
-    using implementation_type = typename service_type::implementation_type;
-    explicit basic_io_object(io_context& ctx) : context_(ctx) {}
-    io_context&   get_io_context() noexcept { return context_; }
-    const io_context& get_io_context() const noexcept { return context_; }
-protected:
-    io_context& context_;
-};
-}
+
+class io_context;
+
+} // namespace asio

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file PetInstance.cpp
 /// @brief 宠物实体实现 — 跟随主人 + 攻击逻辑
 

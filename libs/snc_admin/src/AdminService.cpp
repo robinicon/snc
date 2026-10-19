@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #include "snc/admin/AdminService.h"
 #include "snc/auth/AuthService.h"
 #include <sstream>

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file MapManager.cpp
 /// @brief 地图实例管理器实现
 
@@ -9,6 +10,8 @@ namespace mmorpg {
 
 // ── MapInstance ───────────────────────────────────────────────────
 
+MapInstance::MapInstance(MapInfo info) : info_(std::move(info)) {}
+
 bool MapInstance::AddPlayer(int32_t playerId, conn_handle_t conn) {
     if (players_.count(playerId)) return false;
     players_[playerId] = std::move(conn);
@@ -17,6 +20,10 @@ bool MapInstance::AddPlayer(int32_t playerId, conn_handle_t conn) {
 
 void MapInstance::RemovePlayer(int32_t playerId) {
     players_.erase(playerId);
+}
+
+bool MapInstance::ContainsPlayer(int32_t playerId) const {
+    return players_.count(playerId) > 0;
 }
 
 void MapInstance::Broadcast(int32_t msgId, const char* data, size_t len) {
@@ -90,6 +97,10 @@ std::vector<int32_t> MapManager::ListMapIds() const {
     std::vector<int32_t> ids;
     for (auto& [id, _] : maps_) ids.push_back(id);
     return ids;
+}
+
+size_t MapManager::MapCount() const {
+    return maps_.size();
 }
 
 } // namespace mmorpg

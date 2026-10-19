@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file ItemMgr.cpp
 /// @brief 物品管理器实现
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file Scene.cpp
 /// @brief 场景实现 — 实体容器 + 双频 Tick 驱动
 

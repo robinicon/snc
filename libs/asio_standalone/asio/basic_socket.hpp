@@ -1,25 +1,31 @@
-// asio/basic_socket.hpp — minimal basic_socket template
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
-#include "io_context.hpp"
+
+#include <cstdint>
+#include <cstring>
 #include "error_code.hpp"
 
 namespace asio {
 
-template<typename SocketService>
 class basic_socket {
 public:
-    using executor_type = io_context::executor;
-    using native_handle_type = typename SocketService::native_handle_type;
+    explicit basic_socket(io_context &ctx);
+    ~basic_socket();
+    basic_socket(const basic_socket &) = delete;
+    basic_socket &operator=(const basic_socket &) = delete;
 
-    explicit basic_socket(io_context& ctx) : ctx_(ctx) {}
-    explicit basic_socket(const executor_type& ex) : ctx_(*ex.context()) {}
-
-    io_context& get_io_context() { return ctx_; }
-    const io_context& get_io_context() const { return ctx_; }
-    executor_type get_executor() noexcept { return ctx_.get_executor(); }
+    void close();
+    void close(asio::error_code &ec);
+    bool is_open() const;
 
 protected:
-    io_context& ctx_;
+    io_context &ctx_;
+    int fd_ = -1;
 };
 
 } // namespace asio

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_02_master.cpp
 /// @brief 示例 02 — Master 服（服务状态管理 + GM 命令分发）
 ///
@@ -27,6 +28,7 @@
 #include "snc/http/HttpServer.h"
 #include "snc/base/Log.h"
 #include "snc/mmorpg/MasterService.h"
+#include "common/config.h"
 
 using namespace snc;
 using namespace snc::rpc;
@@ -101,11 +103,10 @@ int main(int argc, char* argv[]) {
     SNC_LOG_INFO("master", "MasterService RPC handlers registered (port %d)", rpc_port);
 
     // ── HTTP Admin 服务器 ─────────────────────────────────────────
-    // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥
-    const char* env_secret = std::getenv("SNC_JWT_SECRET");
-    std::string jwt_secret = (env_secret && env_secret[0])
-        ? env_secret
-        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
+    const std::string jwt_secret = snc_examples::JwtSecret();
+    if (!snc_examples::JwtSecretFromEnv()) {
+        SNC_LOG_WARN("master", "Using default JWT secret — set SNC_JWT_SECRET in production");
+    }
     JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};
     JwtService jwt_svc(jwt_cfg);
 

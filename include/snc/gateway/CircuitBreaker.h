@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // 熔断器模式（Circuit Breaker）—— 防止级联故障扩散到整个服务集群。
 //
 // 三态转换：
@@ -17,7 +18,7 @@
 #include <memory>
 
 namespace snc {
-namespace circuit {
+namespace gateway {
 
 // ══════════════════════════════════════════════════════════════
 // 熔断器
@@ -308,5 +309,5 @@ private:
     std::unordered_map<std::string, CircuitBreaker::Ptr>  breakers_;
 };
 
-} // namespace circuit
+} // namespace gateway
 } // namespace snc

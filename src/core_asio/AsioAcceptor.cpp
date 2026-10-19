@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // AsioAcceptor — Boost.Asio-based non-polling TCP acceptor implementation.
 //
 // Replaces the synchronous Acceptor (include/snc/core/Acceptor.h) with a true

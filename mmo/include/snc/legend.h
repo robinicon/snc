@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Licensed under the MIT License — see LICENSE for details.
+//
 // snc/legend.h — Legend MMO business module unified header.
 //
 // This header aggregates all Legend-specific business-layer headers.

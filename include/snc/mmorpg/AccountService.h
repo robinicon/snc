@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 #pragma once
 
 /// @file AccountService.h
@@ -25,6 +26,7 @@
 #include "snc/http/HttpServer.h"
 #include "snc/auth/AuthService.h"
 #include "snc/db/Database.h"
+#include "snc/db/StubDatabase.h"
 #include "snc/base/Log.h"
 
 namespace snc {

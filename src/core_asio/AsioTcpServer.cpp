@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // AsioTcpServer — Boost.Asio async_accept based TCP server implementation.
 //
 // Mirrors the interface of TcpServer but replaces the polling AcceptLoop

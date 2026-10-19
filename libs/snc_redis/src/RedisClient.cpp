@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Redis client — stub implementation.
 // Compile with SNC_REDIS_CLIENT=ON to enable the real hiredis backend.
 #include "snc/redis/Client.h"

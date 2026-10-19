@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: MIT
 #pragma once
+
+#include "snc/base/Common.h"
 
 // snc_auth — JWT 认证工具模块
 //
@@ -11,16 +14,6 @@
 #include <chrono>
 #include <functional>
 #include <vector>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#include <windows.h>
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#endif
 
 namespace snc {
 namespace auth {

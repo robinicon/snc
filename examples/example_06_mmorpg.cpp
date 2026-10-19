@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_06_mmorpg.cpp
 /// @brief 示例 06 — 完整 MMORPG 多进程启动示例
 ///
@@ -38,6 +39,7 @@
 #include "snc/mmorpg/GameService.h"
 #include "snc/mmorpg/GateService.h"
 #include "snc/mmorpg/WorldService.h"
+#include "common/config.h"
 
 using namespace snc;
 using namespace snc::http;
@@ -101,11 +103,8 @@ int main(int argc, char* argv[]) {
     (void)p; // 端口通过各服务 lambda 捕获使用
 
     // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
-    const char* env_secret = std::getenv("SNC_JWT_SECRET");
-    std::string jwt_secret = (env_secret && env_secret[0])
-        ? env_secret
-        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
-    if (!env_secret) {
+    const std::string jwt_secret = snc_examples::JwtSecret();
+    if (!snc_examples::JwtSecretFromEnv()) {
         SNC_LOG_WARN("mmorpg", "Using default JWT secret — set SNC_JWT_SECRET in production");
     }
     JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};

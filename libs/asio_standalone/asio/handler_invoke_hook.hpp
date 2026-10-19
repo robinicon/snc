@@ -1,8 +1,13 @@
-// asio/handler_invoke_hook.hpp
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+//
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+
 #pragma once
+
 namespace asio {
-namespace handler_invoke {
-template <typename Function>
-inline void invoke(Function& f) { f(); }
-}
-}
+
+class io_context;
+
+} // namespace asio

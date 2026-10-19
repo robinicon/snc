@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file NPCManager.cpp
 
 #include "snc/mmorpg/legend/NPCManager.h"

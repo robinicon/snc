@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // EventLoop implementation — Windows select / Linux epoll / macOS kqueue
 //
 // Platform selection:
@@ -6,7 +7,9 @@
 //   - macOS:   EventLoopKqueue (kevent() – BSD equivalent of epoll).
 
 #include "snc/base/Common.h"
+#include "snc/core/IEventLoop.h"
 #include "snc/core/EventLoop.h"
+#include "snc/core/TcpConnection.h"
 #include "snc/core/MessageQueue.h"
 #include "snc/core/WorkerPool.h"
 #include "snc/base/Log.h"

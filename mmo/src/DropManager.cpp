@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file DropManager.cpp
 
 #include "snc/mmorpg/legend/DropManager.h"

@@ -1,4 +1,5 @@
-﻿/// @file example_full.cpp
+﻿// SPDX-License-Identifier: MIT
+/// @file example_full.cpp
 /// @brief 传奇版全链路多服演示 �?模拟 Gate �?Game �?Master 的完整流�?
 
 #include "snc/mmorpg/legend/GameService.h"
@@ -8,6 +9,7 @@
 #include "snc/core/Msg.h"
 
 #include <iostream>
+#include <cstdlib>
 #include <thread>
 #include <chrono>
 #include <sstream>
@@ -29,7 +31,12 @@ int main() {
 
     // ── 阶段 1：初始化基础设施 ───────────────────────────────────
     auto registry = snc::discovery::ServiceRegistry::Create();
-    auth::JwtConfig jwtCfg{"legend-mmo-demo-secret-key-2024-local!!", 7200, "snc", "HS256"};
+    const char* jwtEnv = std::getenv("SNC_JWT_SECRET");
+    if (!jwtEnv || jwtEnv[0] == '\0') {
+        std::fprintf(stderr, "ERROR: SNC_JWT_SECRET environment variable not set.\n");
+        return 1;
+    }
+    auth::JwtConfig jwtCfg{jwtEnv, 7200, "snc", "HS256"};
 
     GameService svc(nullptr /* no real master */, registry, jwtCfg);
     svc.Init();

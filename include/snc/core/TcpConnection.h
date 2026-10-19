@@ -1,4 +1,9 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024–2026 SNC Project Contributors
+// This source code is subject to the terms of the MIT License.
+// See LICENSE for details.
+
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -154,7 +159,7 @@ public:
     // ── 接收 / 解析 ───────────────────────────────────────────
     void ProcessRecvData() {
         char buf[4096];
-        ssize_t n = sock_.Recv(buf, sizeof(buf));
+        ssize_t n = sock_._recv_(buf, sizeof(buf));
         if (n <= 0) {
             // 对端关闭或读取错误，触发断开回调
             State expected = State::Connected;
@@ -181,7 +186,7 @@ public:
         if (sendOffset_ >= sendBuffer_.size() || !sock_.Valid()) return;
         size_t available = sendBuffer_.size() - sendOffset_;
         if (available == 0) { sendOffset_ = 0; return; }
-        ssize_t n = sock_.Send(sendBuffer_.data() + sendOffset_, available);
+        ssize_t n = sock_._send_(sendBuffer_.data() + sendOffset_, available);
         if (n > 0) sendOffset_ += static_cast<size_t>(n);
         // 已发送超过一半时压缩缓冲区，最多回收 sendBuffer_.size()/2 的空间
         if (sendOffset_ >= sendBuffer_.size() / 2) CompactSendBuffer();
@@ -223,7 +228,7 @@ private:
     /// 发送心跳 ping 并记录发送时刻
     void SendHeartbeatPing() {
         auto ping = Msg::Create(kMsgHeartbeatPing);
-        sock_.Send(ping->Data(), ping->TotalLen());
+        sock_._send_(ping->Data(), ping->TotalLen());
         lastPingSentAtMs_ = NowMs();
         heartbeatMissed_  = 0;
     }
@@ -259,7 +264,7 @@ private:
             }
             if (msgId == kMsgHeartbeatPing) {
                 auto pong = Msg::Create(kMsgHeartbeatPong);
-                sock_.Send(pong->Data(), pong->TotalLen());
+                sock_._send_(pong->Data(), pong->TotalLen());
                 continue;
             }
 

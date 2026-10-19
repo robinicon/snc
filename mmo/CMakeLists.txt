@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License — see LICENSE for details.
 cmake_minimum_required(VERSION 3.20)
-project(snc_mmo_legend VERSION 1.0.0 LANGUAGES CXX)
+project(snc_mmo_legend VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +28,6 @@ add_library(snc_mmo_legend
 target_include_directories(snc_mmo_legend
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../include>
         $<INSTALL_INTERFACE:include>
 )
 
@@ -38,7 +39,7 @@ target_link_libraries(snc_mmo_legend PUBLIC
     $<$<BOOL:${SNC_ENABLE_FLATBUFFERS}>:snc_serial_fbs>
 )
 
-# ── Find Lua（与 snc_rpc_lua 策略一致：未找到时降级为 stub）──────
+# ── Find Lua（未找到时降级为 stub）────────────────────────────
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(LUA QUIET lua5.4 lua5.3 lua52 luajit)
@@ -46,12 +47,12 @@ endif()
 
 if(NOT LUA_INCLUDE_DIR OR NOT LUA_LIBRARY)
     find_path(LUA_INCLUDE_DIR NAMES lua.h
-        PATHS "C:/Lua/include" "C:/Program Files/Lua" "E:/Lua/luajit/include"
-        "/usr/include" "/usr/local/include"
+        PATHS "C:/Lua/include" "C:/Program Files/Lua"
+              "/usr/include" "/usr/local/include"
     )
     find_library(LUA_LIBRARY NAMES lua lua-5.4 lua-5.3 luajit
-        PATHS "C:/Lua/lib" "C:/Program Files/Lua" "E:/Lua/luajit/lib"
-        "/usr/lib" "/usr/local/lib"
+        PATHS "C:/Lua/lib" "C:/Program Files/Lua"
+              "/usr/lib" "/usr/local/lib"
     )
 endif()
 
@@ -65,5 +66,11 @@ if(LUA_INCLUDE_DIR AND LUA_LIBRARY)
     endif()
 else()
     message(WARNING "MMO Legend: Lua not found. LuaBridge will compile in stub mode.")
-    message(STATUS "  To enable Lua support, install Lua 5.4 and set -DLUA_ROOT=/path/to/lua")
+    message(STATUS "  To enable Lua support, install Lua 5.4 via vcpkg: vcpkg install lua")
 endif()
+
+# ── Tests ──────────────────────────────────────────────────────
+add_subdirectory(tests)
+
+# ── Examples ───────────────────────────────────────────────────
+add_subdirectory(examples)

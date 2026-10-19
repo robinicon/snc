@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // FbsSerializer implementation — stub mode compatible
 #include "snc/serial/fbs/FbsSerializer.h"
 

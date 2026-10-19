@@ -89,7 +89,7 @@ auto   names    = reg->ListServices();       // 所有服务名列表
 ```cpp
 #include <snc/gateway/ClusterGateway.h>
 #include <snc/discovery/ServiceRegistry.h>
-#include <snc/circuit/CircuitBreaker.h>
+#include <snc/gateway/CircuitBreaker.h>
 
 auto reg = snc::discovery::ServiceRegistry::Create();
 reg->Register("login", "10.0.0.1", 8001, 1);

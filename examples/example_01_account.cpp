@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file example_01_account.cpp
 /// @brief 示例 01 — 账号服（Account Service）
 ///
@@ -21,8 +22,10 @@
 #include "snc/http/HttpServer.h"
 #include "snc/auth/AuthService.h"
 #include "snc/db/Database.h"
+#include "snc/db/StubDatabase.h"
 #include "snc/admin/AdminService.h"
 #include "snc/base/Log.h"
+#include "common/config.h"
 
 using namespace snc;
 using namespace snc::http;
@@ -111,11 +114,8 @@ int main(int argc, char* argv[]) {
 
     // JWT 配置（Gate 服复用同一密钥进行本地验签）
     // ⚠️ 生产环境请使用 secure random 生成 ≥32 字节密钥，并通过环境变量传入
-    const char* env_secret = std::getenv("SNC_JWT_SECRET");
-    std::string jwt_secret = (env_secret && env_secret[0])
-        ? env_secret
-        : "snc-dev-jwt-secret-key-must-be-at-least-32-bytes!";
-    if (!env_secret) {
+    const std::string jwt_secret = snc_examples::JwtSecret();
+    if (!snc_examples::JwtSecretFromEnv()) {
         SNC_LOG_WARN("account", "Using default JWT secret — set SNC_JWT_SECRET in production");
     }
     JwtConfig jwt_cfg{jwt_secret, 7200, "snc-mmorpg", "HS256"};

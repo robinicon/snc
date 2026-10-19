@@ -1,111 +1,139 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+// snc/base/Common.h
+#pragma once
 
-// 平台相关头文件必须在 namespace 之外包含，
-// 否则 Winsock/cctype 等符号会被导入 snc 命名空间，导致编译错误。
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <memory>
+#include <algorithm>
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <chrono>
+#include <cassert>
+#include <stdexcept>
+#include <system_error>
+
+// Platform detection
 #ifdef _WIN32
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
+    // 预先定义 WIN32_LEAN_AND_MEAN 防止 windows.h 包含旧 winsock.h
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
-    #include <winsock2.h>
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
     #include <windows.h>
-    // MSVC 不直接提供 ssize_t，此处手动定义（long 类型，与 POSIX 兼容）
-    #ifndef _SSIZE_T_DEFINED
-        typedef long ssize_t;
-        #define _SSIZE_T_DEFINED
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <errno.h>
+#endif
+
+#ifdef _WIN32
+    // 清除 windows.h 定义的宏（winsock2.h 已在 include 前解除 far/near）
+    #ifdef min
+        #undef min
+    #endif
+    #ifdef max
+        #undef max
     #endif
 #endif
 
-#include <cstdint>
-#include <cstddef>
-#include <cstring>
+// Windows-specific macros
+#ifdef _WIN32
+    #define SNC_PLATFORM_WINDOWS 1
+    #define SNC_PLATFORM_UNIX 0
+    #define SNC_FORCE_INLINE __forceinline
+    #define SNC_DEPRECATED __declspec(deprecated)
+    using ssize_t = ptrdiff_t;
+#else
+    #define SNC_PLATFORM_WINDOWS 0
+    #define SNC_PLATFORM_UNIX 1
+    #define SNC_FORCE_INLINE inline __attribute__((always_inline))
+    #define SNC_DEPRECATED __attribute__((deprecated))
+#endif
+
+// Logging macros (basic implementation; Log.h provides the full logger with __FUNCTION__ tag)
+#ifndef SNC_LOG_IMPL_DEFINED
+#define SNC_LOG_IMPL_DEFINED
+#define SNC_LOG_INFO(...)   snc::log_impl(__VA_ARGS__)
+#define SNC_LOG_WARN(...)   snc::log_warn_impl(__VA_ARGS__)
+#define SNC_LOG_ERROR(...)  snc::log_error_impl(__VA_ARGS__)
+#define SNC_LOG_DEBUG(...)  snc::log_debug_impl(__VA_ARGS__)
+#endif
 
 namespace snc {
 
-// ── 平台检测宏 ──────────────────────────────────────────────────
-#ifdef _WIN32
-    #define SNC_PLATFORM_WINDOWS
-#elif defined(__linux__)
-    #define SNC_PLATFORM_LINUX
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-    #include <errno.h>
-#elif defined(__APPLE__)
-    #define SNC_PLATFORM_MACOS
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-    #include <errno.h>
-#endif
-
-// ── 编译器检测宏 ────────────────────────────────────────────────
-#ifdef _MSC_VER
-    #define SNC_COMPILER_MSVC
-#elif defined(__GNUC__)
-    #define SNC_COMPILER_GCC
-#elif defined(__clang__)
-    #define SNC_COMPILER_CLANG
-#endif
-
-/// 内联提示：MSVC 用 __forceinline，GCC/Clang 用 always_inline
-#ifdef SNC_COMPILER_MSVC
-    #define SNC_FORCE_INLINE __forceinline
-#else
-    #define SNC_FORCE_INLINE __attribute__((always_inline)) inline
-#endif
-
-/// DLL 导出/导入宏。
-/// - 构建共享库时（SNC_BUILD_SHARED），Windows 下使用 __declspec(dllexport)
-/// - 静态库或跨平台场景下为空宏，不影响 ABI
-#ifdef _WIN32
-    #ifdef SNC_BUILD_SHARED
-        #define SNC_API __declspec(dllexport)
-    #else
-        #define SNC_API
-    #endif
-#else
-    #define SNC_API __attribute__((visibility("default")))
-#endif
-
-// ── 字节序工具函数 ──────────────────────────────────────────────
-/// 检测当前系统是否为小端序（x86/x64 均为小端）。
-inline bool IsLittleEndian() {
-    uint16_t x = 1;
-    return *reinterpret_cast<uint8_t*>(&x) == 1;
+inline void log_impl(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+    fputc('\n', stdout);
 }
 
-/// 主机字节序 → 小端 16 位（网络字节序为大端，游戏协议常用小端）
-inline uint16_t HostToLE16(uint16_t v) {
-    return IsLittleEndian() ? v : ((v >> 8) | (v << 8));
+inline void log_warn_impl(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "[WARN] ");
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fputc('\n', stderr);
 }
 
-/// 主机字节序 → 小端 32 位
-inline uint32_t HostToLE32(uint32_t v) {
-    if (IsLittleEndian()) return v;
-    return (v >> 24) | ((v >> 8) & 0x0000FF00u) | ((v << 8) & 0x00FF0000u) | (v << 24);
+inline void log_error_impl(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "[ERROR] ");
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fputc('\n', stderr);
 }
 
-// ── 时间工具 ────────────────────────────────────────────────────
-/// 返回单调时钟的毫秒时间戳（跨平台，不受系统时间调整影响）。
-/// Windows 使用 QueryPerformanceCounter，POSIX 使用 std::chrono::high_resolution_clock。
-inline int64_t TimeMs() {
-#ifdef _WIN32
-    LARGE_INTEGER freq, counter;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&counter);
-    return static_cast<int64_t>(counter.QuadPart * 1000.0 / freq.QuadPart);
-#else
-    using namespace std::chrono;
-    return static_cast<int64_t>(duration_cast<milliseconds>(
-        high_resolution_clock::now().time_since_epoch()).count());
-#endif
+inline void log_debug_impl(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stdout, "[DEBUG] ");
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+    fputc('\n', stdout);
+}
+
+// UUID generation
+inline std::string generate_uuid() {
+    // Simple UUID v4 implementation
+    static thread_local unsigned int seed = 0;
+    seed ^= static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+    seed ^= seed >> 16;
+    seed *= 0x7feb352dU;
+    seed ^= seed >> 15;
+    seed *= 0x846ca68bU;
+    seed ^= seed >> 16;
+
+    char buf[37];
+    snprintf(buf, sizeof(buf),
+        "%08x-%04x-%04x-%04x-%012llx",
+        static_cast<unsigned>(seed ^ static_cast<unsigned>(std::hash<std::thread::id>{}(std::this_thread::get_id()))),
+        static_cast<unsigned short>(seed & 0xffff),
+        static_cast<unsigned short>((seed >> 16) & 0xffff),
+        static_cast<unsigned short>((seed >> 32) & 0xffff),
+        static_cast<long long>(seed) & 0xffffffffffffLL);
+    return std::string(buf);
 }
 
 } // namespace snc

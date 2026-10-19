@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] — 2026-10-13
+## [1.0.1] — 2026-10-19
 
 ### Fixed
 - `example_04_gate.cpp` 编译错误：`std::signal` → `<csignal>`，`Shutdown` → `Stop`，移除不存在的 `OnPlayerDisconnect` 调用，修复 lambda 捕获
@@ -14,41 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - 单元测试：移除 doctest 第三方头文件，替换为自包含 Catch2-like 测试框架（`test_framework.h`）
 - README：更新文档结构描述，反映自包含测试框架
-
----
-
-## [Unreleased]
-
-### Added
-- `snc_http` — lightweight HTTP server with routing, middleware chain, JSON responses
-- `snc_auth` — JWT (HS256) signing, verification, and middleware factory; self-contained, no OpenSSL dependency
-- `snc_admin` — Admin API scaffolding with callback-driven business logic injection; ban/unban, resource modification, operation logs
-- `snc_websocket` — WebSocket gateway implementing RFC 6455; `IGatewayBridge` pure virtual callback interface
-- `snc_redis` — Redis client adapter; in-memory stub by default, hiredis backend optional via `SNC_REDIS_CLIENT=ON`
-- `snc_db` — Database adapter layer with `StubDatabase` for testing
-- Tutorials: HTTP Server, JWT Auth, Admin API, WebSocket Gateway
-- `SNC_API` export macro in `Common.h` for future shared-library builds
-
-### Fixed
-- `NetBuffer` missing move constructor and move assignment operator
-- `BackpressureStats::depthSamples_` data race — now protected by `mtx_`
-- `MessageQueue::Size()` missing `const` qualifier
-- `JwtConfig` field name mismatch (`expiry_seconds` → `expireSecs`)
-- `StubDatabase` UPDATE column matching bug
-- `WsGateway` buffer limit enforcement for received frames
-- `AdminService` operation log truncation after callback invocation
-
-### Changed
-- `snc_auth` refactored: removed WeChat mini-program login and other hardcoded business logic; only generic `JwtService` remains
-- `snc_auth` SHA-256 / HMAC-SHA256 replaced with placeholder implementations (not cryptographically correct); see CRYPTO_NOTICE.md
-- Removed all debug test programs (`debug_jwt*`, `debug_crash*`, `debug_hmac*`, `debug_sha256*`, etc.)
-- Removed `Dbg*` debug accessors from `JwtService` public API
-- Test suite cleaned up: only 5 production test targets remain in `tests/CMakeLists.txt`
-- `snc_admin` refactored: removed in-memory player store; all business logic is now injected via callbacks
-- Removed unit tests and test fixtures (now tutorial/documentation-focused)
-- Removed `examples/` directory from build system
-
----
+- 所有 CMakeLists.txt 添加 `SPDX-License-Identifier: MIT` 许可证头
+- `thirdparty/doctest/` 添加独立 LICENSE 文件
+- `libs/asio_standalone/` 各头文件添加 SPDX 许可证头及独立实现声明
+- 示例代码移除硬编码 JWT fallback secret，改为强制要求环境变量 `SNC_JWT_SECRET`
+- `.gitignore` 补充 `build_log*.txt`、`build_output.txt`、`build-verbose.txt`
+- `mmo/CMakeLists.txt` 移除硬编码 Windows Lua 路径（`E:/Lua/luajit/*`），更新为 vcpkg 安装提示
+- `mmo/include/` 全部头文件添加 `SPDX-License-Identifier: MIT` 许可证头
+- 新增 `AUTHORS.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md`、`KNOWN_ISSUES.md`、`CRYPTO_NOTICE.md`
+- 新增 `vcpkg.json` 可选依赖声明
 
 ## [1.0.0] — 2026-10-12
 

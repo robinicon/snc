@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: MIT
+// Licensed under the MIT License — see LICENSE for details.
 #pragma once
 
-/// @file GameService.h（传奇版增强�?
+/// @file GameService.h（传奇版增强）
 ///
 /// 集成所有传奇子模块�?
 ///   - PlayerActor（增强版，含职业/背包/装备/技�?PK/行会�?

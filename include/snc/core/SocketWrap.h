@@ -1,21 +1,30 @@
-﻿#pragma once
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
+// This source code is subject to the terms of the MIT License.
+// See LICENSE for details.
+
+#pragma once
 
 #include "snc/base/Common.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 #include <cstring>
 #include "snc/base/Log.h"
 
 namespace snc {
 namespace core {
 
-/// SocketWrap — RAII 风格的 TCP 套接字封装。
+/// SocketWrap - RAII 风格的 TCP 套接字封装。
 ///
 /// 职责：
 ///   - 管理 socket fd 生命周期，析构时自动关闭
 ///   - 封装跨平台的非阻塞、Nagle、SO_REUSEADDR 设置
-///   - 提供 Send/Recv 接口，内部处理 Windows 宏替换问题
+///   - 提供 _send_/_recv_ 接口，内部处理 Windows 宏替换问题
 ///
-/// 注意：Windows 上 send/recv 被 winsock2.h 定义为宏，
-///       此处使用 (::send) / (::recv) 括号写法防止宏展开覆盖方法名。
+/// 注意：Windows 上 send/recv 被 winsock2.h/winnt.h 定义为宏，
+///       类方法命名为 _send_/_recv_ 以规避宏冲突，内部调用 (::send)/(::recv)。
 class SocketWrap {
 public:
     SocketWrap() : fd_(-1) {}
@@ -86,12 +95,12 @@ public:
 
     /// 发起 TCP 连接（阻塞调用，须在非阻塞模式下使用或与 epoll/select 配合）。
     bool Connect(const sockaddr_in& addr) {
-        return ::connect(fd_, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)) == 0;
+        return (::connect)(fd_, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)) == 0;
     }
 
     /// 发送数据，返回实际发送字节数（-1 表示错误）。
     /// Windows 上使用 (::send) 防止 send 宏展开。
-    ssize_t Send(const char* buf, size_t len) {
+    ssize_t _send_(const char* buf, size_t len) {
 #ifdef _WIN32
         return (::send)(fd_, buf, static_cast<int>(len), 0);
 #else
@@ -101,7 +110,7 @@ public:
 
     /// 接收数据到 buf，返回实际接收字节数（-1 表示错误或 EOF）。
     /// Windows 上使用 (::recv) 防止 recv 宏展开。
-    ssize_t Recv(char* buf, size_t len) {
+    ssize_t _recv_(char* buf, size_t len) {
 #ifdef _WIN32
         return (::recv)(fd_, buf, static_cast<int>(len), 0);
 #else

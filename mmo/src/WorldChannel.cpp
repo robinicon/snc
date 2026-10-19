@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 /// @file WorldChannel.cpp
 
 #include "snc/mmorpg/legend/WorldChannel.h"

@@ -1,7 +1,10 @@
-// asio/asio.hpp — Minimal standalone Asio-compatible header
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024-2026 SNC Project Contributors
 //
-// Provides only the subset of Boost.Asio needed by the SNC Gate server.
-// Implements io_context via select() on Windows, with strand, socket, timer.
+// This is an independent implementation of a subset of Boost.Asio,
+// not derived from or linked to the Boost Software Library.
+// Provides io_context via select() on Windows, with strand, socket, timer.
+
 #pragma once
 
 #include "error.hpp"
@@ -14,7 +17,5 @@
 #include "steady_timer.hpp"
 #include "basic_io_object.hpp"
 #include "basic_socket.hpp"
-#include "ip/address.hpp"
-#include "ip/basic_endpoint.hpp"
 #include "ip/tcp.hpp"
-#include "async_result.hpp"
+#include "ip/address.hpp"
